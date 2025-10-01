@@ -5,10 +5,10 @@
 In your Vercel project dashboard, configure the following environment variables:
 
 ### Required Variables:
-- **VITE_OPENAI_API_KEY**: Your OpenAI API key for authentication
+- **OPENAI_API_KEY**: Your OpenAI API key for authentication
   - Get this from https://platform.openai.com/api-keys
   - Format: `sk-proj-...`
-  - **IMPORTANT**: Must be prefixed with `VITE_` for Vite to expose it to the client
+  - **IMPORTANT**: This is used server-side only and is NOT exposed to the client
 
 ## Deployment Steps
 
@@ -19,7 +19,7 @@ In your Vercel project dashboard, configure the following environment variables:
 
 2. **Configure Environment Variables**:
    - Go to Project Settings → Environment Variables
-   - Add `VITE_OPENAI_API_KEY` with your OpenAI API key
+   - Add `OPENAI_API_KEY` with your OpenAI API key (without VITE_ prefix)
    - Apply to Production, Preview, and Development environments
 
 3. **Deploy**:
@@ -30,12 +30,15 @@ In your Vercel project dashboard, configure the following environment variables:
 
 ## Security Features
 
-The application includes the following security headers:
-- **X-Content-Type-Options**: Prevents MIME type sniffing
-- **X-Frame-Options**: Prevents clickjacking attacks
-- **X-XSS-Protection**: Enables browser XSS protection
-- **Referrer-Policy**: Controls referrer information
-- **Permissions-Policy**: Restricts access to browser features
+The application includes the following security measures:
+- **Server-side API proxy**: OpenAI API key is never exposed to the client
+- **Vercel serverless functions**: `/api/chat` and `/api/vector-stores` endpoints handle all OpenAI communication
+- **Security headers**:
+  - **X-Content-Type-Options**: Prevents MIME type sniffing
+  - **X-Frame-Options**: Prevents clickjacking attacks
+  - **X-XSS-Protection**: Enables browser XSS protection
+  - **Referrer-Policy**: Controls referrer information
+  - **Permissions-Policy**: Restricts access to browser features
 
 ## Post-Deployment
 
@@ -47,8 +50,8 @@ After deployment:
 
 ## Troubleshooting
 
-**Issue**: "Application is not properly configured" error
-- **Solution**: Verify `VITE_OPENAI_API_KEY` is set in Vercel environment variables and redeploy
+**Issue**: API errors or "Server configuration error"
+- **Solution**: Verify `OPENAI_API_KEY` is set in Vercel environment variables and redeploy
 
 **Issue**: Vector stores not loading
 - **Solution**: Check that your OpenAI API key has access to the vector stores API

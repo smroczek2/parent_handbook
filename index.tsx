@@ -22,16 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const headerTitle = document.getElementById('header-title') as HTMLHeadingElement;
     const campSelector = document.getElementById('camp-selector') as HTMLSelectElement;
 
-    const OPENAI_API_ENDPOINT = "https://api.openai.com/v1/responses";
-    const OPENAI_VECTOR_STORE_ENDPOINT = "https://api.openai.com/v1/vector_stores";
-    const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
-
-    // Validate required environment variables
-    if (!OPENAI_API_KEY) {
-        console.error("VITE_OPENAI_API_KEY is not configured");
-        alert("Application is not properly configured. Please contact support.");
-        throw new Error("Missing required environment variable: VITE_OPENAI_API_KEY");
-    }
+    // Use Vercel serverless functions instead of direct OpenAI API calls
+    const CHAT_API_ENDPOINT = "/api/chat";
+    const VECTOR_STORES_API_ENDPOINT = "/api/vector-stores";
 
     const WELCOME_MESSAGE = "Hi! I can help answer questions about your selected camp. What would you like to know?";
     const INSTRUCTIONS = "You are a helpful AI assistant for a summer camp. Your role is to help parents find answers to their questions about the camp by searching through the camp's documentation. Be friendly, informative, and concise. Focus on providing accurate information from the documentation. If a question cannot be answered from the available documents, politely let the parent know. Respond only to the question asked and do not offer any follow up actions.";
@@ -42,13 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchVectorStores(): Promise<Camp[]> {
         try {
-            const response = await fetch(OPENAI_VECTOR_STORE_ENDPOINT, {
-                method: "GET",
-                headers: {
-                    "Authorization": `Bearer ${OPENAI_API_KEY}`,
-                    "Content-Type": "application/json",
-                    "OpenAI-Beta": "assistants=v2"
-                }
+            const response = await fetch(VECTOR_STORES_API_ENDPOINT, {
+                method: "GET"
             });
 
             if (!response.ok) {
@@ -106,25 +94,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function* queryStream(userMessage: string, vectorStoreId: string, instructions: string): AsyncGenerator<string, void, unknown> {
         try {
-            const response = await fetch(OPENAI_API_ENDPOINT, {
+            const response = await fetch(CHAT_API_ENDPOINT, {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${OPENAI_API_KEY}`
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    model: "gpt-5-mini",
-                    input: userMessage,
-                    instructions: instructions,
-                    stream: true,
-                    reasoning: {
-                        effort: "low"  // Use low reasoning effort for faster responses
-                    },
-                    tools: [{
-                        type: "file_search",
-                        vector_store_ids: [vectorStoreId],
-                        max_num_results: 20 
-                    }]
+                    message: userMessage,
+                    vectorStoreId: vectorStoreId,
+                    instructions: instructions
                 })
             });
 
