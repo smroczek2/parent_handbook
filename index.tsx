@@ -24,13 +24,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const OPENAI_API_ENDPOINT = "https://api.openai.com/v1/responses";
     const OPENAI_VECTOR_STORE_ENDPOINT = "https://api.openai.com/v1/vector_stores";
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
     // Validate required environment variables
     if (!OPENAI_API_KEY) {
-        console.error("OPENAI_API_KEY is not configured");
+        console.error("VITE_OPENAI_API_KEY is not configured");
         alert("Application is not properly configured. Please contact support.");
-        throw new Error("Missing required environment variable: OPENAI_API_KEY");
+        throw new Error("Missing required environment variable: VITE_OPENAI_API_KEY");
     }
 
     const WELCOME_MESSAGE = "Hi! I can help answer questions about your selected camp. What would you like to know?";

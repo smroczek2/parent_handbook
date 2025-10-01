@@ -5,9 +5,10 @@
 In your Vercel project dashboard, configure the following environment variables:
 
 ### Required Variables:
-- **OPENAI_API_KEY**: Your OpenAI API key for authentication
+- **VITE_OPENAI_API_KEY**: Your OpenAI API key for authentication
   - Get this from https://platform.openai.com/api-keys
   - Format: `sk-proj-...`
+  - **IMPORTANT**: Must be prefixed with `VITE_` for Vite to expose it to the client
 
 ## Deployment Steps
 
@@ -18,7 +19,7 @@ In your Vercel project dashboard, configure the following environment variables:
 
 2. **Configure Environment Variables**:
    - Go to Project Settings → Environment Variables
-   - Add `OPENAI_API_KEY` with your OpenAI API key
+   - Add `VITE_OPENAI_API_KEY` with your OpenAI API key
    - Apply to Production, Preview, and Development environments
 
 3. **Deploy**:
@@ -47,7 +48,7 @@ After deployment:
 ## Troubleshooting
 
 **Issue**: "Application is not properly configured" error
-- **Solution**: Verify `OPENAI_API_KEY` is set in Vercel environment variables
+- **Solution**: Verify `VITE_OPENAI_API_KEY` is set in Vercel environment variables and redeploy
 
 **Issue**: Vector stores not loading
 - **Solution**: Check that your OpenAI API key has access to the vector stores API
