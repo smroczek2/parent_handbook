@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campminder Parent Portal</title>
+    <style>
+        :root {
+            --page-bg: #1A1D2E;
+            --sidebar-bg: #121422;
+            --card-bg: #242842;
+            --border-color: #313657;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A5C5;
+            --text-placeholder: #8A8891;
+            --accent-primary: #7B42F6;
+            --accent-secondary: #B01EFF;
+            
+            --widget-bg: #090233;
+            --header-gradient: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            --user-message-gradient: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            --bot-message-bg: #1D1A3D;
+            --input-bg: #1D1A3D;
+            --launcher-bg: var(--accent-primary);
+            --send-button-bg: var(--accent-primary);
+            
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: var(--font-family);
+            background-color: var(--page-bg);
+            color: var(--text-primary);
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            grid-template-rows: 64px 1fr;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .dashboard-header {
+            grid-column: 2 / 3;
+            grid-row: 1 / 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .dashboard-header h1 {
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .dashboard-sidebar {
+            grid-column: 1 / 2;
+            grid-row: 1 / 3;
+            background-color: var(--sidebar-bg);
+            padding: 1.5rem;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 2.5rem;
+        }
+
+        .sidebar-nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .sidebar-nav a:hover {
+            background-color: var(--card-bg);
+            color: var(--text-primary);
+        }
+        
+        .sidebar-nav a.active {
+            background: var(--header-gradient);
+            color: var(--text-primary);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .dashboard-main {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .dashboard-grid .registration-card {
+            grid-column: 1 / -1; /* Make this card span full width */
+        }
+
+        .dashboard-card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .dashboard-card h2 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+        }
+        
+        .dashboard-card p, .dashboard-card ul {
+             color: var(--text-secondary);
+             line-height: 1.6;
+        }
+        
+        .dashboard-card .button {
+            display: inline-block;
+            background: var(--header-gradient);
+            color: var(--text-primary);
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 1rem;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Chat Widget Styles */
+
+        #chat-launcher {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background-color: var(--launcher-bg);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
+            z-index: 999;
+            overflow: hidden;
+        }
+
+        #chat-launcher:hover {
+            transform: scale(1.1);
+        }
+
+        #chat-launcher svg {
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            position: absolute;
+        }
+        
+        #launcher-icon-open { transform: rotate(0deg) scale(1); opacity: 1; }
+        #launcher-icon-close { transform: rotate(90deg) scale(0); opacity: 0; }
+        #chat-widget-container.open ~ #chat-launcher #launcher-icon-open { transform: rotate(-90deg) scale(0); opacity: 0; }
+        #chat-widget-container.open ~ #chat-launcher #launcher-icon-close { transform: rotate(0deg) scale(1); opacity: 1; }
+
+        #chat-widget-container {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 400px;
+            max-width: 90vw;
+            height: 600px;
+            max-height: 80vh;
+            background-color: var(--widget-bg);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+        
+        #chat-widget-container.fullscreen {
+            bottom: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            max-width: 100vw;
+            max-height: 100vh;
+            border-radius: 0;
+        }
+
+        #chat-widget-container.open {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        header {
+            background: var(--header-gradient);
+            padding: 16px 20px;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            gap: 16px;
+        }
+        
+        header .header-content { flex-grow: 1; }
+        header h1 { font-size: 1.25rem; margin: 0; font-weight: 600; }
+        header p { font-size: 0.875rem; margin: 2px 0 0; opacity: 0.9; }
+
+        #chatbot-selector {
+            background-color: var(--bot-message-bg);
+            border-radius: 18px;
+            display: flex;
+            padding: 4px;
+        }
+
+        .selector-btn {
+            background-color: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 6px 14px;
+            border-radius: 14px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.2s ease-in-out;
+            white-space: nowrap;
+        }
+
+        .selector-btn.active {
+            background-color: var(--send-button-bg);
+            color: var(--text-primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header-icons { display: flex; align-items: center; }
+        .header-icons button { background: none; border: none; cursor: pointer; padding: 4px; margin-left: 8px; color: var(--text-primary); }
+        #expand-button .icon-shrink { display: none; }
+        #chat-widget-container.fullscreen #expand-button .icon-shrink { display: inline; }
+        #chat-widget-container.fullscreen #expand-button .icon-expand { display: none; }
+
+        #chat-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            font-size: 0.95rem;
+        }
+
+        .user-message {
+            background-image: var(--user-message-gradient);
+            color: var(--text-primary);
+            align-self: flex-end;
+            border-radius: 18px 18px 4px 18px;
+        }
+        
+        .bot-message {
+            background-color: var(--bot-message-bg);
+            color: var(--text-secondary);
+            align-self: flex-start;
+            border-radius: 18px 18px 18px 4px;
+        }
+
+        .bot-message p, .bot-message ul, .bot-message h3 { margin: 0; }
+        .bot-message > *:not(:first-child) { margin-top: 0.75em; }
+        .bot-message h3 { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); }
+        .bot-message ul { padding-left: 20px; list-style-position: outside; }
+        .bot-message li { padding-left: 5px; margin-bottom: 0.25em; }
+        
+        @keyframes wave-in {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .thinking { font-style: italic; color: var(--text-placeholder); }
+        .thinking span { display: inline-block; opacity: 0; transform: translateY(10px); animation: wave-in 0.35s forwards cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+
+        #input-area {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background-color: var(--widget-bg);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        #message-input {
+            flex-grow: 1;
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 20px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 1rem;
+            outline: none;
+            margin-right: 0.75rem;
+            transition: box-shadow 0.2s;
+        }
+        
+        #message-input::placeholder { color: var(--text-placeholder); }
+        #message-input:focus { box-shadow: 0 0 0 2px rgba(123, 66, 246, 0.4); }
+
+        #send-button {
+            background-color: var(--send-button-bg);
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #send-button:hover:not(:disabled) { background-color: #8A5BF7; }
+        #send-button:disabled { background-color: var(--bot-message-bg); cursor: not-allowed; opacity: 0.6; }
+
+        #chat-container::-webkit-scrollbar { width: 6px; }
+        #chat-container::-webkit-scrollbar-track { background: transparent; }
+        #chat-container::-webkit-scrollbar-thumb { background-color: var(--bot-message-bg); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <header class="dashboard-header">
+        <h1>Parent Portal</h1>
+         <svg height="32" aria-hidden="true" viewBox="0 0 16 16" version="1.1" width="32" fill="#FFFFFF">
+            <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm3.82 2.32c.03-.02.23-.15.63-.44.4-.28.78-.52 1.05-.72.27-.2.42-.32.42-.32s.87.52 2.14 1.45c.13.09.23.15.3.18.08.03.18.03.26 0l.02-.01.01-.01c.08-.04.15-.1.21-.18.06-.08.1-.18.1-.28 0-.08-.02-.16-.06-.24a.58.58 0 0 0-.16-.21l-.05-.03-2.33-1.55.02-.01s.18-.15.46-.42c.28-.27.5-.5.66-.68.17-.18.28-.32.28-.32s.38.16.9.46c.52.3.88.5 1.1.58.13.05.25.06.36.03.11-.03.2-.09.28-.17.08-.08.12-.18.12-.3 0-.1-.03-.2-.08-.28a.55.55 0 0 0-.2-.18l-.02-.01c-.1-.04-1.1-.73-2.6-1.63-.16-.1-.3-.2-.42-.3-.12-.1-.23-.2-.32-.28a.5.5 0 0 0-.28-.08.48.48 0 0 0-.29.08.48.48 0 0 0-.2.24c-.03.08-.05.17-.05.28 0 .08.02.16.07.24l.02.03s-.18.14-.46.42c-.28.27-.5.5-.66.68-.17.18-.28.32-.28.32s-.42-.2-.98-.58c-.56-.38-1-.68-1.25-.85-.13-.09-.24-.14-.33-.17a.45.45 0 0 0-.28-.03.48.48 0 0 0-.29.17c-.08.08-.12.18-.12.29 0 .1.03.2.08.28.05.08.12.14.2.19l.03.01.01.01c.08.03.17.03.26 0Zm-1.2-3.64c.02-.05.05-.08.09-.12a.23.23 0 0 1 .12-.04h.03c.04 0 .08.01.12.04.03.02.06.06.08.1.02.04.03.08.03.13s-.01.1-.04.14a.2.2 0 0 1-.1.07.2.2 0 0 1-.12.02h-.02a.2.2 0 0 1-.12-.03c-.04-.02-.07-.05-.09-.09a.23.23 0 0 1-.03-.12c0-.05.01-.1.03-.14Z"></path>
+        </svg>
+    </header>
+
+    <aside class="dashboard-sidebar">
+        <div class="sidebar-logo">
+            <svg height="32" viewBox="0 0 101 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50.5 101C78.3904 101 101 78.3904 101 50.5C101 22.6096 78.3904 0 50.5 0C22.6096 0 0 22.6096 0 50.5C0 78.3904 22.6096 101 50.5 101Z" fill="url(#paint0_linear_1_2)"/>
+                <defs><linearGradient id="paint0_linear_1_2" x1="50.5" y1="0" x2="50.5" y2="101" gradientUnits="userSpaceOnUse"><stop stop-color="#7B42F6"/><stop offset="1" stop-color="#B01EFF"/></linearGradient></defs>
+            </svg>
+            <span>CampMinder</span>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="#">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <span>Home</span>
+                </a></li>
+                <li><a href="#">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span>My Campers</span>
+                </a></li>
+                <li><a href="#" class="active">
+                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit-3"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    <span>Register for Camp</span>
+                </a></li>
+                <li><a href="#">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    <span>Billing</span>
+                </a></li>
+                <li><a href="#">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span>My Account</span>
+                </a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <main class="dashboard-main">
+        <div class="dashboard-grid">
+            <div class="dashboard-card registration-card">
+                <h2>Register for Summer 2025</h2>
+                <p>Registration is now open! Choose one of our amazing camps and select a session below to get started. We can't wait to see you this summer!</p>
+                <div style="margin-top: 1.5rem;">
+                    <label for="camp-selector" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Select a Camp:</label>
+                    <select id="camp-selector" style="width: 100%; max-width: 400px; padding: 0.75rem 1rem; border-radius: 8px; background-color: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color); font-size: 1rem; cursor: pointer; outline: none;">
+                        <option value="">Loading camps...</option>
+                    </select>
+                </div>
+                <a href="#" class="button">Begin Registration</a>
+            </div>
+            <div class="dashboard-card">
+                <h2>My Campers</h2>
+                <p>You have not registered any campers yet. Click 'Begin Registration' to add your first camper and enroll them in a session.</p>
+            </div>
+            <div class="dashboard-card">
+                <h2>Need Help?</h2>
+                 <p>Have questions about registration, camp programs, or billing? Click the chat icon in the bottom right corner to speak with our friendly AI assistant, available 24/7 to help you.</p>
+            </div>
+        </div>
+    </main>
+    
+    <div id="chat-widget-container">
+        <header>
+            <div class="header-content">
+                <h1 id="header-title">Camp AI Assistant</h1>
+                <p>Your camp AI assistant</p>
+            </div>
+            <div class="header-icons">
+                 <button id="expand-button" aria-label="Expand chat">
+                    <svg class="icon-expand" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                    <svg class="icon-shrink" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+                 </button>
+            </div>
+        </header>
+
+        <div id="chat-container">
+            <!-- Messages will be appended here -->
+        </div>
+
+        <form id="input-area">
+            <input type="text" id="message-input" placeholder="Ask a question..." autocomplete="off" aria-label="Chat message input">
+            <button type="submit" id="send-button" aria-label="Send message">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </form>
+    </div>
+    
+    <button id="chat-launcher" aria-label="Open chat widget">
+        <svg id="launcher-icon-open" xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 640 640" fill="#FFFFFF">
+            <path d="M128 192C128 156.7 156.7 128 192 128L448 128C483.3 128 512 156.7 512 192L512 416C512 451.3 483.3 480 448 480L360 480C351.3 480 342.9 482.8 336 488L224 572L224 504C224 490.7 213.3 480 200 480L192 480C156.7 480 128 451.3 128 416L128 192zM192 96C139 96 96 139 96 192L96 256L16 256C7.2 256 0 263.2 0 272C0 280.8 7.2 288 16 288L96 288L96 416C96 469 139 512 192 512L192 580C192 595.5 204.5 608 220 608C226.1 608 232 606 236.8 602.4L355.2 513.6C356.6 512.6 358.3 512 360 512L448 512C501 512 544 469 544 416L544 288L624 288C632.8 288 640 280.8 640 272C640 263.2 632.8 256 624 256L544 256L544 192C544 139 501 96 448 96L192 96zM256 312C269.3 312 280 301.3 280 288C280 274.7 269.3 264 256 264C242.7 264 232 274.7 232 288C232 301.3 242.7 312 256 312zM408 288C408 274.7 397.3 264 384 264C370.7 264 360 274.7 360 288C360 301.3 370.7 312 384 312C397.3 312 408 301.3 408 288zM256 224L384 224C419.3 224 448 252.7 448 288C448 323.3 419.3 352 384 352L256 352C220.7 352 192 323.3 192 288C192 252.7 220.7 224 256 224zM160 288C160 341 203 384 256 384L384 384C437 384 480 341 480 288C480 235 437 192 384 192L256 192C203 192 160 235 160 288z"/>
+        </svg>
+        <svg id="launcher-icon-close" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+    
+    <script type="module" src="index.tsx"></script>
+</body>
+</html>
