@@ -14,10 +14,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { message, vectorStoreId, instructions } = req.body;
+    const { message, vectorStoreId, instructions, camperContext } = req.body;
 
     if (!message || !vectorStoreId || !instructions) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Prepend camper context to instructions if provided
+    let enhancedInstructions = instructions;
+    if (camperContext && camperContext.trim()) {
+      enhancedInstructions = `${camperContext}\n\n${instructions}\n\nIMPORTANT: Use the camper context provided above to personalize your responses. Reference the specific camper details when searching for and providing information.`;
     }
 
     const response = await fetch('https://api.openai.com/v1/responses', {
@@ -29,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify({
         model: 'gpt-5-mini',
         input: message,
-        instructions: instructions,
+        instructions: enhancedInstructions,
         stream: true,
         reasoning: {
           effort: 'low'

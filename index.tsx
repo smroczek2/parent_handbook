@@ -11,6 +11,16 @@ interface Camp {
     vectorStoreId: string;
 }
 
+interface SegmentOption {
+    label: string;
+    values: string[];
+}
+
+interface CamperProfile {
+    name: string;
+    segments: { [key: string]: string };
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const chatContainer = document.getElementById('chat-container') as HTMLDivElement;
     const inputForm = document.getElementById('input-area') as HTMLFormElement;
@@ -21,10 +31,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const expandButton = document.getElementById('expand-button') as HTMLButtonElement;
     const headerTitle = document.getElementById('header-title') as HTMLHeadingElement;
     const campSelector = document.getElementById('camp-selector') as HTMLSelectElement;
+    const personalizationSection = document.getElementById('personalization-section') as HTMLDivElement;
+    const camperSelector = document.getElementById('camper-selector') as HTMLSelectElement;
+    const segmentDropdownsContainer = document.getElementById('segment-dropdowns-container') as HTMLDivElement;
+    const segmentsLoading = document.getElementById('segments-loading') as HTMLDivElement;
+    const segmentsContent = document.getElementById('segments-content') as HTMLDivElement;
 
     // Use Vercel serverless functions instead of direct OpenAI API calls
     const CHAT_API_ENDPOINT = "/api/chat";
     const VECTOR_STORES_API_ENDPOINT = "/api/vector-stores";
+    const EXTRACT_SEGMENTS_API_ENDPOINT = "/api/extract-segments";
 
     const WELCOME_MESSAGE = "Hi! I can help answer questions about your selected camp. What would you like to know?";
     const INSTRUCTIONS = "You are a helpful AI assistant for a summer camp. Your role is to help parents find answers to their questions about the camp by searching through the camp's documentation. Be friendly, informative, and concise. Focus on providing accurate information from the documentation. If a question cannot be answered from the available documents, politely let the parent know. Respond only to the question asked and do not offer any follow up actions.";
@@ -32,6 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let availableCamps: Camp[] = [];
     let activeCamp: Camp | null = null;
     let thinkingInterval: number | null = null;
+    let availableSegments: SegmentOption[] = [];
+    let selectedCamper: CamperProfile = { name: '', segments: {} };
+
+    // Mock camper names for proof of concept
+    const MOCK_CAMPER_NAMES = ['Alex Thompson', 'Jordan Martinez', 'Taylor Kim', 'Casey Johnson'];
 
     async function fetchVectorStores(): Promise<Camp[]> {
         try {
@@ -53,6 +74,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }));
         } catch (error) {
             console.error("Error fetching vector stores:", error);
+            return [];
+        }
+    }
+
+    async function fetchSegments(vectorStoreId: string): Promise<SegmentOption[]> {
+        try {
+            const response = await fetch(EXTRACT_SEGMENTS_API_ENDPOINT, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ vectorStoreId })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch segments: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.segments || [];
+        } catch (error) {
+            console.error("Error fetching segments:", error);
             return [];
         }
     }
@@ -92,8 +135,93 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function populateCamperSelector() {
+        camperSelector.innerHTML = '';
+
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select a camper...';
+        camperSelector.appendChild(defaultOption);
+
+        MOCK_CAMPER_NAMES.forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            camperSelector.appendChild(option);
+        });
+    }
+
+    function renderSegmentDropdowns(segments: SegmentOption[]) {
+        segmentDropdownsContainer.innerHTML = '';
+
+        segments.forEach(segment => {
+            const wrapper = document.createElement('div');
+
+            const label = document.createElement('label');
+            label.textContent = `${segment.label}:`;
+            label.style.display = 'block';
+            label.style.marginBottom = '0.5rem';
+            label.style.fontWeight = '500';
+            label.style.color = 'var(--text-primary)';
+            label.style.fontSize = '0.9rem';
+
+            const select = document.createElement('select');
+            select.dataset.segmentLabel = segment.label;
+            select.style.width = '100%';
+            select.style.padding = '0.65rem 0.85rem';
+            select.style.borderRadius = '8px';
+            select.style.backgroundColor = 'var(--input-bg)';
+            select.style.color = 'var(--text-primary)';
+            select.style.border = '1px solid var(--border-color)';
+            select.style.fontSize = '0.95rem';
+            select.style.cursor = 'pointer';
+            select.style.outline = 'none';
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = `Select ${segment.label.toLowerCase()}...`;
+            select.appendChild(defaultOption);
+
+            segment.values.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            });
+
+            select.addEventListener('change', () => {
+                if (select.dataset.segmentLabel) {
+                    selectedCamper.segments[select.dataset.segmentLabel] = select.value;
+                }
+            });
+
+            wrapper.appendChild(label);
+            wrapper.appendChild(select);
+            segmentDropdownsContainer.appendChild(wrapper);
+        });
+    }
+
+    function buildCamperContext(): string {
+        if (!selectedCamper.name) {
+            return '';
+        }
+
+        const segmentDetails = Object.entries(selectedCamper.segments)
+            .filter(([_, value]) => value)
+            .map(([label, value]) => `${label}: ${value}`)
+            .join(', ');
+
+        if (segmentDetails) {
+            return `Context: The parent is asking about ${selectedCamper.name}. Camper details: ${segmentDetails}.`;
+        } else {
+            return `Context: The parent is asking about ${selectedCamper.name}.`;
+        }
+    }
+
     async function* queryStream(userMessage: string, vectorStoreId: string, instructions: string): AsyncGenerator<string, void, unknown> {
         try {
+            const camperContext = buildCamperContext();
+
             const response = await fetch(CHAT_API_ENDPOINT, {
                 method: "POST",
                 headers: {
@@ -102,7 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     message: userMessage,
                     vectorStoreId: vectorStoreId,
-                    instructions: instructions
+                    instructions: instructions,
+                    camperContext: camperContext
                 })
             });
 
@@ -360,25 +489,59 @@ document.addEventListener('DOMContentLoaded', () => {
         widgetContainer.classList.toggle('fullscreen');
     }
 
-    const switchCamp = (camp: Camp) => {
+    const switchCamp = async (camp: Camp) => {
         activeCamp = camp;
         headerTitle.textContent = `${camp.name} AI`;
 
         chatContainer.innerHTML = '';
         addMessage('bot', WELCOME_MESSAGE);
         messageInput.focus();
+
+        // Show personalization section
+        personalizationSection.style.display = 'block';
+
+        // Reset camper selection first
+        selectedCamper = { name: '', segments: {} };
+        camperSelector.value = '';
+
+        // Clear existing segment dropdowns
+        segmentDropdownsContainer.innerHTML = '';
+
+        // Show loading indicator
+        segmentsLoading.style.display = 'block';
+        segmentsContent.style.display = 'none';
+
+        // Fetch and render new segments for this camp
+        availableSegments = await fetchSegments(camp.vectorStoreId);
+        renderSegmentDropdowns(availableSegments);
+
+        // Hide loading indicator and show content
+        segmentsLoading.style.display = 'none';
+        segmentsContent.style.display = 'grid';
     };
 
     // Initialize the app
     async function initialize() {
         availableCamps = await fetchVectorStores();
         populateCampSelector(availableCamps);
+        populateCamperSelector();
 
         // Auto-select first camp if available
         if (availableCamps.length > 0) {
             activeCamp = availableCamps[0];
             campSelector.value = activeCamp.vectorStoreId;
             headerTitle.textContent = `${activeCamp.name} AI`;
+
+            // Load segments for first camp
+            personalizationSection.style.display = 'block';
+            segmentsLoading.style.display = 'block';
+            segmentsContent.style.display = 'none';
+
+            availableSegments = await fetchSegments(activeCamp.vectorStoreId);
+            renderSegmentDropdowns(availableSegments);
+
+            segmentsLoading.style.display = 'none';
+            segmentsContent.style.display = 'grid';
         }
 
         addMessage('bot', WELCOME_MESSAGE);
@@ -390,6 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!selectedVectorStoreId) {
             activeCamp = null;
             headerTitle.textContent = 'Camp AI Assistant';
+            personalizationSection.style.display = 'none';
             return;
         }
 
@@ -397,6 +561,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedCamp) {
             switchCamp(selectedCamp);
         }
+    });
+
+    camperSelector.addEventListener('change', () => {
+        selectedCamper.name = camperSelector.value;
+        selectedCamper.segments = {};
+
+        // Reset all segment dropdowns
+        const segmentSelects = segmentDropdownsContainer.querySelectorAll('select');
+        segmentSelects.forEach(select => {
+            (select as HTMLSelectElement).value = '';
+        });
     });
 
     inputForm.addEventListener('submit', handleFormSubmit);
