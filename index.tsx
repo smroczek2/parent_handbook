@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const widgetContainer = document.getElementById('chat-widget-container') as HTMLDivElement;
     const expandButton = document.getElementById('expand-button') as HTMLButtonElement;
     const headerTitle = document.getElementById('header-title') as HTMLHeadingElement;
+    const headerSubtitle = document.getElementById('header-subtitle') as HTMLParagraphElement;
     const campSelector = document.getElementById('camp-selector') as HTMLSelectElement;
     const personalizationSection = document.getElementById('personalization-section') as HTMLDivElement;
     const segmentsLoading = document.getElementById('segments-loading') as HTMLDivElement;
@@ -650,7 +651,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const switchCamp = async (camp: Camp) => {
         activeCamp = camp;
-        headerTitle.textContent = `${camp.name} AI`;
+        headerTitle.textContent = `${camp.name} Parent Handbook`;
+        headerSubtitle.textContent = `Ask questions that can be answered by the ${camp.name} parent handbook.`;
 
         chatContainer.innerHTML = '';
         const welcomeMsg = buildDynamicWelcomeMessage();
@@ -688,7 +690,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (availableCamps.length > 0) {
             activeCamp = availableCamps[0];
             campSelector.value = activeCamp.vectorStoreId;
-            headerTitle.textContent = `${activeCamp.name} AI`;
+            headerTitle.textContent = `${activeCamp.name} Parent Handbook`;
+            headerSubtitle.textContent = `Ask questions that can be answered by the ${activeCamp.name} parent handbook`;
 
             // Load segments for first camp
             personalizationSection.style.display = 'block';
@@ -713,7 +716,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!selectedVectorStoreId) {
             activeCamp = null;
-            headerTitle.textContent = 'Camp AI Assistant';
+            headerTitle.textContent = 'Parent Handbook';
+            headerSubtitle.textContent = 'Select a camp to get started';
             personalizationSection.style.display = 'none';
             return;
         }
