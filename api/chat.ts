@@ -23,7 +23,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Prepend camper context to instructions if provided
     let enhancedInstructions = instructions;
     if (camperContext && camperContext.trim()) {
-      enhancedInstructions = `${camperContext}\n\n${instructions}\n\nIMPORTANT: Use the camper context provided above to personalize your responses. Reference the specific camper details when searching for and providing information.`;
+      enhancedInstructions = `${camperContext}\n\n${instructions}\n\nIMPORTANT PERSONALIZATION GUIDELINES:
+- Always use first names when referring to specific campers (never use full names or last names)
+- Tailor your answers to the specific sessions and age groups the campers are enrolled in
+- When searching documentation, prioritize information relevant to their enrollment details
+- Make responses feel personal and parent-focused by naturally referencing the campers by their first names
+- If information applies to specific sessions or age groups, clearly indicate which camper(s) it relates to
+- Respond conversationally as if you know these specific campers and their camp plans`;
     }
 
     const response = await fetch('https://api.openai.com/v1/responses', {

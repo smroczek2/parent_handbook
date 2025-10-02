@@ -17,6 +17,7 @@ interface SegmentOption {
 }
 
 interface CamperProfile {
+    id: string;
     name: string;
     segments: { [key: string]: string };
 }
@@ -32,10 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const headerTitle = document.getElementById('header-title') as HTMLHeadingElement;
     const campSelector = document.getElementById('camp-selector') as HTMLSelectElement;
     const personalizationSection = document.getElementById('personalization-section') as HTMLDivElement;
-    const camperSelector = document.getElementById('camper-selector') as HTMLSelectElement;
-    const segmentDropdownsContainer = document.getElementById('segment-dropdowns-container') as HTMLDivElement;
     const segmentsLoading = document.getElementById('segments-loading') as HTMLDivElement;
-    const segmentsContent = document.getElementById('segments-content') as HTMLDivElement;
+    const campersContainer = document.getElementById('campers-container') as HTMLDivElement;
+    const addCamperButton = document.getElementById('add-camper-button') as HTMLButtonElement;
 
     // Use Vercel serverless functions instead of direct OpenAI API calls
     const CHAT_API_ENDPOINT = "/api/chat";
@@ -49,10 +49,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeCamp: Camp | null = null;
     let thinkingInterval: number | null = null;
     let availableSegments: SegmentOption[] = [];
-    let selectedCamper: CamperProfile = { name: '', segments: {} };
+    let campers: CamperProfile[] = [];
+    let nextCamperId = 1;
 
     // Mock camper names for proof of concept
     const MOCK_CAMPER_NAMES = ['Alex Thompson', 'Jordan Martinez', 'Taylor Kim', 'Casey Johnson'];
+
+    function generateCamperId(): string {
+        return `camper-${nextCamperId++}`;
+    }
+
+    function extractFirstName(fullName: string): string {
+        return fullName.split(' ')[0];
+    }
 
     async function fetchVectorStores(): Promise<Camp[]> {
         try {
@@ -135,92 +144,242 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function populateCamperSelector() {
-        camperSelector.innerHTML = '';
-
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = 'Select a camper...';
-        camperSelector.appendChild(defaultOption);
-
-        MOCK_CAMPER_NAMES.forEach(name => {
-            const option = document.createElement('option');
-            option.value = name;
-            option.textContent = name;
-            camperSelector.appendChild(option);
-        });
+    function addCamperCard() {
+        const camperId = generateCamperId();
+        const newCamper: CamperProfile = {
+            id: camperId,
+            name: '',
+            segments: {}
+        };
+        campers.push(newCamper);
+        renderCamperCards();
     }
 
-    function renderSegmentDropdowns(segments: SegmentOption[]) {
-        segmentDropdownsContainer.innerHTML = '';
+    function removeCamperCard(camperId: string) {
+        if (campers.length <= 1) return; // Always keep at least one camper
 
-        segments.forEach(segment => {
-            const wrapper = document.createElement('div');
+        campers = campers.filter(c => c.id !== camperId);
+        renderCamperCards();
+        updateWelcomeMessage();
+    }
 
-            const label = document.createElement('label');
-            label.textContent = `${segment.label}:`;
-            label.style.display = 'block';
-            label.style.marginBottom = '0.5rem';
-            label.style.fontWeight = '500';
-            label.style.color = 'var(--text-primary)';
-            label.style.fontSize = '0.9rem';
+    function renderCamperCards() {
+        campersContainer.innerHTML = '';
 
-            const select = document.createElement('select');
-            select.dataset.segmentLabel = segment.label;
-            select.style.width = '100%';
-            select.style.padding = '0.65rem 0.85rem';
-            select.style.borderRadius = '8px';
-            select.style.backgroundColor = 'var(--input-bg)';
-            select.style.color = 'var(--text-primary)';
-            select.style.border = '1px solid var(--border-color)';
-            select.style.fontSize = '0.95rem';
-            select.style.cursor = 'pointer';
-            select.style.outline = 'none';
+        campers.forEach(camper => {
+            const card = document.createElement('div');
+            card.dataset.camperId = camper.id;
+            card.style.padding = '1rem';
+            card.style.border = '1px solid var(--border-color)';
+            card.style.borderRadius = '8px';
+            card.style.backgroundColor = 'var(--card-bg)';
+            card.style.position = 'relative';
 
-            const defaultOption = document.createElement('option');
-            defaultOption.value = '';
-            defaultOption.textContent = `Select ${segment.label.toLowerCase()}...`;
-            select.appendChild(defaultOption);
+            const grid = document.createElement('div');
+            grid.style.display = 'grid';
+            grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(180px, 1fr))';
+            grid.style.gap = '1rem';
+            grid.style.alignItems = 'end';
+            if (campers.length > 1) {
+                grid.style.paddingRight = '3rem'; // Make room for remove button
+            }
 
-            segment.values.forEach(value => {
+            // Camper name selector
+            const nameWrapper = document.createElement('div');
+            const nameLabel = document.createElement('label');
+            nameLabel.textContent = 'Camper Name:';
+            nameLabel.style.display = 'block';
+            nameLabel.style.marginBottom = '0.5rem';
+            nameLabel.style.fontWeight = '500';
+            nameLabel.style.color = 'var(--text-primary)';
+            nameLabel.style.fontSize = '0.9rem';
+
+            const nameSelect = document.createElement('select');
+            nameSelect.dataset.camperId = camper.id;
+            nameSelect.dataset.field = 'name';
+            nameSelect.style.width = '100%';
+            nameSelect.style.padding = '0.65rem 0.85rem';
+            nameSelect.style.borderRadius = '8px';
+            nameSelect.style.backgroundColor = 'var(--input-bg)';
+            nameSelect.style.color = 'var(--text-primary)';
+            nameSelect.style.border = '1px solid var(--border-color)';
+            nameSelect.style.fontSize = '0.95rem';
+            nameSelect.style.cursor = 'pointer';
+            nameSelect.style.outline = 'none';
+
+            const defaultNameOption = document.createElement('option');
+            defaultNameOption.value = '';
+            defaultNameOption.textContent = 'Select camper...';
+            nameSelect.appendChild(defaultNameOption);
+
+            MOCK_CAMPER_NAMES.forEach(name => {
                 const option = document.createElement('option');
-                option.value = value;
-                option.textContent = value;
-                select.appendChild(option);
+                option.value = name;
+                option.textContent = name;
+                if (camper.name === name) option.selected = true;
+                nameSelect.appendChild(option);
             });
 
-            select.addEventListener('change', () => {
-                if (select.dataset.segmentLabel) {
-                    selectedCamper.segments[select.dataset.segmentLabel] = select.value;
+            nameSelect.addEventListener('change', (e) => {
+                const target = e.target as HTMLSelectElement;
+                const camperId = target.dataset.camperId!;
+                const camperObj = campers.find(c => c.id === camperId);
+                if (camperObj) {
+                    camperObj.name = target.value;
+                    camperObj.segments = {}; // Reset segments when name changes
+                    updateWelcomeMessage();
                 }
             });
 
-            wrapper.appendChild(label);
-            wrapper.appendChild(select);
-            segmentDropdownsContainer.appendChild(wrapper);
+            nameWrapper.appendChild(nameLabel);
+            nameWrapper.appendChild(nameSelect);
+            grid.appendChild(nameWrapper);
+
+            // Segment selectors
+            availableSegments.forEach(segment => {
+                const segmentWrapper = document.createElement('div');
+                const segmentLabel = document.createElement('label');
+                segmentLabel.textContent = `${segment.label}:`;
+                segmentLabel.style.display = 'block';
+                segmentLabel.style.marginBottom = '0.5rem';
+                segmentLabel.style.fontWeight = '500';
+                segmentLabel.style.color = 'var(--text-primary)';
+                segmentLabel.style.fontSize = '0.9rem';
+
+                const segmentSelect = document.createElement('select');
+                segmentSelect.dataset.camperId = camper.id;
+                segmentSelect.dataset.segmentLabel = segment.label;
+                segmentSelect.style.width = '100%';
+                segmentSelect.style.padding = '0.65rem 0.85rem';
+                segmentSelect.style.borderRadius = '8px';
+                segmentSelect.style.backgroundColor = 'var(--input-bg)';
+                segmentSelect.style.color = 'var(--text-primary)';
+                segmentSelect.style.border = '1px solid var(--border-color)';
+                segmentSelect.style.fontSize = '0.95rem';
+                segmentSelect.style.cursor = 'pointer';
+                segmentSelect.style.outline = 'none';
+
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = `Select ${segment.label.toLowerCase()}...`;
+                segmentSelect.appendChild(defaultOption);
+
+                segment.values.forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    if (camper.segments[segment.label] === value) option.selected = true;
+                    segmentSelect.appendChild(option);
+                });
+
+                segmentSelect.addEventListener('change', (e) => {
+                    const target = e.target as HTMLSelectElement;
+                    const camperId = target.dataset.camperId!;
+                    const segmentLabel = target.dataset.segmentLabel!;
+                    const camperObj = campers.find(c => c.id === camperId);
+                    if (camperObj) {
+                        camperObj.segments[segmentLabel] = target.value;
+                        updateWelcomeMessage();
+                    }
+                });
+
+                segmentWrapper.appendChild(segmentLabel);
+                segmentWrapper.appendChild(segmentSelect);
+                grid.appendChild(segmentWrapper);
+            });
+
+            card.appendChild(grid);
+
+            // Remove button (only show if more than 1 camper) - positioned absolutely
+            if (campers.length > 1) {
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+                removeButton.style.position = 'absolute';
+                removeButton.style.top = '1rem';
+                removeButton.style.right = '1rem';
+                removeButton.style.padding = '0.5rem';
+                removeButton.style.borderRadius = '6px';
+                removeButton.style.backgroundColor = 'transparent';
+                removeButton.style.color = 'var(--text-secondary)';
+                removeButton.style.border = '1px solid var(--border-color)';
+                removeButton.style.cursor = 'pointer';
+                removeButton.style.transition = 'all 0.2s';
+                removeButton.title = 'Remove camper';
+
+                removeButton.addEventListener('click', () => removeCamperCard(camper.id));
+                removeButton.addEventListener('mouseenter', () => {
+                    removeButton.style.backgroundColor = 'var(--input-bg)';
+                    removeButton.style.borderColor = '#ff4444';
+                    removeButton.style.color = '#ff4444';
+                });
+                removeButton.addEventListener('mouseleave', () => {
+                    removeButton.style.backgroundColor = 'transparent';
+                    removeButton.style.borderColor = 'var(--border-color)';
+                    removeButton.style.color = 'var(--text-secondary)';
+                });
+
+                card.appendChild(removeButton);
+            }
+
+            campersContainer.appendChild(card);
         });
     }
 
-    function buildCamperContext(): string {
-        if (!selectedCamper.name) {
+    function buildEnhancedCamperContext(): string {
+        const configuredCampers = campers.filter(c => c.name);
+
+        if (configuredCampers.length === 0) {
             return '';
         }
 
-        const segmentDetails = Object.entries(selectedCamper.segments)
-            .filter(([_, value]) => value)
-            .map(([label, value]) => `${label}: ${value}`)
-            .join(', ');
+        const camperDescriptions = configuredCampers.map(camper => {
+            const firstName = extractFirstName(camper.name);
+            const segmentDetails = Object.entries(camper.segments)
+                .filter(([_, value]) => value)
+                .map(([label, value]) => `${label}: ${value}`)
+                .join(', ');
 
-        if (segmentDetails) {
-            return `Context: The parent is asking about ${selectedCamper.name}. Camper details: ${segmentDetails}.`;
-        } else {
-            return `Context: The parent is asking about ${selectedCamper.name}.`;
+            if (segmentDetails) {
+                return `${firstName} (${segmentDetails})`;
+            } else {
+                return firstName;
+            }
+        });
+
+        const count = configuredCampers.length;
+        const camperList = camperDescriptions.join(', ');
+
+        return `You are assisting a parent who has ${count} camper${count > 1 ? 's' : ''} enrolled: ${camperList}. When answering questions, use first names naturally (${configuredCampers.map(c => extractFirstName(c.name)).join(', ')}) and tailor your responses to their specific sessions and age groups. Search the documentation for information that is relevant to their particular enrollment details.`;
+    }
+
+    function buildDynamicWelcomeMessage(): string {
+        const configuredCampers = campers.filter(c => c.name);
+
+        if (configuredCampers.length === 0) {
+            return "Hi! I can help answer questions about your selected camp. What would you like to know?";
+        }
+
+        const firstNames = configuredCampers.map(c => extractFirstName(c.name));
+        const namesList = firstNames.length === 1
+            ? firstNames[0]
+            : firstNames.slice(0, -1).join(', ') + ' and ' + firstNames[firstNames.length - 1];
+
+        return `Hi! I see you have ${namesList} registered. I can help answer questions specific to ${firstNames.length === 1 ? 'their' : 'their'} camp experience. What would you like to know?`;
+    }
+
+    function updateWelcomeMessage() {
+        const welcomeMsg = buildDynamicWelcomeMessage();
+        const botMessages = chatContainer.querySelectorAll('.bot-message');
+        if (botMessages.length > 0) {
+            const firstBotMessage = botMessages[0];
+            firstBotMessage.textContent = welcomeMsg;
         }
     }
 
     async function* queryStream(userMessage: string, vectorStoreId: string, instructions: string): AsyncGenerator<string, void, unknown> {
         try {
-            const camperContext = buildCamperContext();
+            const camperContext = buildEnhancedCamperContext();
 
             const response = await fetch(CHAT_API_ENDPOINT, {
                 method: "POST",
@@ -494,37 +653,36 @@ document.addEventListener('DOMContentLoaded', () => {
         headerTitle.textContent = `${camp.name} AI`;
 
         chatContainer.innerHTML = '';
-        addMessage('bot', WELCOME_MESSAGE);
+        const welcomeMsg = buildDynamicWelcomeMessage();
+        addMessage('bot', welcomeMsg);
         messageInput.focus();
 
         // Show personalization section
         personalizationSection.style.display = 'block';
 
-        // Reset camper selection first
-        selectedCamper = { name: '', segments: {} };
-        camperSelector.value = '';
-
-        // Clear existing segment dropdowns
-        segmentDropdownsContainer.innerHTML = '';
+        // Reset campers array
+        campers = [];
+        campersContainer.innerHTML = '';
 
         // Show loading indicator
         segmentsLoading.style.display = 'block';
-        segmentsContent.style.display = 'none';
+        addCamperButton.style.display = 'none';
 
         // Fetch and render new segments for this camp
         availableSegments = await fetchSegments(camp.vectorStoreId);
-        renderSegmentDropdowns(availableSegments);
 
-        // Hide loading indicator and show content
+        // Hide loading indicator and show add button
         segmentsLoading.style.display = 'none';
-        segmentsContent.style.display = 'grid';
+        addCamperButton.style.display = 'flex';
+
+        // Add first camper card
+        addCamperCard();
     };
 
     // Initialize the app
     async function initialize() {
         availableCamps = await fetchVectorStores();
         populateCampSelector(availableCamps);
-        populateCamperSelector();
 
         // Auto-select first camp if available
         if (availableCamps.length > 0) {
@@ -535,16 +693,19 @@ document.addEventListener('DOMContentLoaded', () => {
             // Load segments for first camp
             personalizationSection.style.display = 'block';
             segmentsLoading.style.display = 'block';
-            segmentsContent.style.display = 'none';
+            addCamperButton.style.display = 'none';
 
             availableSegments = await fetchSegments(activeCamp.vectorStoreId);
-            renderSegmentDropdowns(availableSegments);
 
             segmentsLoading.style.display = 'none';
-            segmentsContent.style.display = 'grid';
+            addCamperButton.style.display = 'flex';
+
+            // Add first camper card
+            addCamperCard();
         }
 
-        addMessage('bot', WELCOME_MESSAGE);
+        const welcomeMsg = buildDynamicWelcomeMessage();
+        addMessage('bot', welcomeMsg);
     }
 
     campSelector.addEventListener('change', () => {
@@ -563,16 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    camperSelector.addEventListener('change', () => {
-        selectedCamper.name = camperSelector.value;
-        selectedCamper.segments = {};
-
-        // Reset all segment dropdowns
-        const segmentSelects = segmentDropdownsContainer.querySelectorAll('select');
-        segmentSelects.forEach(select => {
-            (select as HTMLSelectElement).value = '';
-        });
-    });
+    addCamperButton.addEventListener('click', addCamperCard);
 
     inputForm.addEventListener('submit', handleFormSubmit);
     launcher.addEventListener('click', toggleWidget);

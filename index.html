@@ -425,28 +425,22 @@
 
                 <div id="personalization-section" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); display: none;">
                     <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-primary);">Personalize Your Experience</h3>
-                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">Select a camper and their details to get personalized answers from the AI assistant.</p>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">Add your campers and their details to get personalized answers from the AI assistant.</p>
 
                     <div id="segments-loading" style="display: none; padding: 1.5rem; text-align: center;">
                         <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid var(--border-color); border-top-color: var(--accent-primary); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
                         <p style="margin-top: 0.75rem; color: var(--text-secondary); font-size: 0.9rem;">Loading personalization options...</p>
                     </div>
 
-                    <div id="segments-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                        <div>
-                            <label for="camper-selector" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary); font-size: 0.9rem;">Camper Name:</label>
-                            <select id="camper-selector" style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 8px; background-color: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color); font-size: 0.95rem; cursor: pointer; outline: none;">
-                                <option value="">Select a camper...</option>
-                            </select>
-                        </div>
-
-                        <div id="segment-dropdowns-container" style="display: contents;">
-                            <!-- Dynamic segment dropdowns will be inserted here -->
-                        </div>
+                    <div id="campers-container" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <!-- Camper cards will be dynamically inserted here -->
                     </div>
-                </div>
 
-                <a href="#" class="button">Begin Registration</a>
+                    <button id="add-camper-button" type="button" style="margin-top: 1rem; padding: 0.65rem 1.25rem; border-radius: 8px; background-color: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color); font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: background-color 0.2s; font-weight: 500;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Add Another Camper
+                    </button>
+                </div>
             </div>
             <div class="dashboard-card">
                 <h2>My Campers</h2>
