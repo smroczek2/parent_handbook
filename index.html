@@ -329,6 +329,47 @@
         .thinking { font-style: italic; color: var(--text-placeholder); }
         .thinking span { display: inline-block; opacity: 0; transform: translateY(10px); animation: wave-in 0.35s forwards cubic-bezier(0.25, 0.46, 0.45, 0.94); }
 
+        #suggested-questions {
+            padding: 0.75rem 1rem;
+            background-color: var(--widget-bg);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        #suggested-questions-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+
+        .suggested-question-btn {
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            line-height: 1.4;
+        }
+
+        .suggested-question-btn:hover {
+            background-color: var(--bot-message-bg);
+            border-color: var(--accent-primary);
+            transform: translateY(-1px);
+        }
+
+        .suggested-question-btn:active {
+            transform: translateY(0);
+        }
+
         #input-area {
             display: flex;
             align-items: center;
@@ -469,6 +510,10 @@
 
         <div id="chat-container">
             <!-- Messages will be appended here -->
+        </div>
+
+        <div id="suggested-questions" style="display: none;">
+            <!-- Suggested questions will be appended here -->
         </div>
 
         <form id="input-area">

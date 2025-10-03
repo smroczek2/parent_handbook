@@ -37,14 +37,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const segmentsLoading = document.getElementById('segments-loading') as HTMLDivElement;
     const campersContainer = document.getElementById('campers-container') as HTMLDivElement;
     const addCamperButton = document.getElementById('add-camper-button') as HTMLButtonElement;
+    const suggestedQuestionsContainer = document.getElementById('suggested-questions') as HTMLDivElement;
 
     // Use Vercel serverless functions instead of direct OpenAI API calls
     const CHAT_API_ENDPOINT = "/api/chat";
     const VECTOR_STORES_API_ENDPOINT = "/api/vector-stores";
     const EXTRACT_SEGMENTS_API_ENDPOINT = "/api/extract-segments";
+    const SUGGEST_QUESTIONS_API_ENDPOINT = "/api/suggest-questions";
 
     const WELCOME_MESSAGE = "Hi! I can help answer questions about your selected camp. What would you like to know?";
-    const INSTRUCTIONS = "You are a helpful AI assistant for a summer camp. Your role is to help parents find answers to their questions about the camp by searching through the camp's documentation. Be friendly, informative, and concise. Focus on providing accurate information from the documentation. If a question cannot be answered from the available documents, politely let the parent know. Respond only to the question asked and do not offer any follow up actions.";
+    const INSTRUCTIONS = "You are a helpful AI assistant for a summer camp. Your role is to help parents find answers to their questions about the camp by searching through the camp's documentation. Be friendly, informative, and concise. Focus on providing accurate information from the documentation. If a question cannot be answered from the available documents, politely let the parent know.\n\nIMPORTANT: Answer ONLY the specific question asked. Do NOT suggest follow-up questions, additional actions, or offer to help with anything else. Simply provide the requested information and end your response there.";
 
     let availableCamps: Camp[] = [];
     let activeCamp: Camp | null = null;
@@ -108,6 +110,72 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error fetching segments:", error);
             return [];
         }
+    }
+
+    async function fetchSuggestedQuestions(vectorStoreId: string, camperContext?: string): Promise<string[]> {
+        try {
+            const response = await fetch(SUGGEST_QUESTIONS_API_ENDPOINT, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    vectorStoreId,
+                    camperContext: camperContext || ''
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch suggested questions: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.questions || [];
+        } catch (error) {
+            console.error("Error fetching suggested questions:", error);
+            return [];
+        }
+    }
+
+    function renderSuggestedQuestions(questions: string[]) {
+        if (questions.length === 0) {
+            suggestedQuestionsContainer.style.display = 'none';
+            return;
+        }
+
+        suggestedQuestionsContainer.innerHTML = '';
+
+        const label = document.createElement('div');
+        label.id = 'suggested-questions-label';
+        label.textContent = 'Suggested Questions';
+        suggestedQuestionsContainer.appendChild(label);
+
+        questions.forEach(question => {
+            const button = document.createElement('button');
+            button.className = 'suggested-question-btn';
+            button.textContent = question;
+            button.type = 'button';
+            button.addEventListener('click', () => {
+                messageInput.value = question;
+                messageInput.focus();
+                // Optionally auto-submit
+                // inputForm.dispatchEvent(new Event('submit'));
+            });
+            suggestedQuestionsContainer.appendChild(button);
+        });
+
+        suggestedQuestionsContainer.style.display = 'flex';
+    }
+
+    async function updateSuggestedQuestions() {
+        if (!activeCamp) {
+            suggestedQuestionsContainer.style.display = 'none';
+            return;
+        }
+
+        const camperContext = buildEnhancedCamperContext();
+        const questions = await fetchSuggestedQuestions(activeCamp.vectorStoreId, camperContext);
+        renderSuggestedQuestions(questions);
     }
 
     const thinkingPhrases = [
@@ -376,6 +444,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const firstBotMessage = botMessages[0];
             firstBotMessage.textContent = welcomeMsg;
         }
+        // Update suggested questions when camper details change
+        updateSuggestedQuestions();
     }
 
     async function* queryStream(userMessage: string, vectorStoreId: string, instructions: string): AsyncGenerator<string, void, unknown> {
@@ -552,9 +622,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         messageInput.disabled = true;
         sendButton.disabled = true;
-        
+
         addMessage('user', userMessage);
         messageInput.value = '';
+
+        // Hide suggested questions after first message
+        suggestedQuestionsContainer.style.display = 'none';
 
         if (thinkingInterval) clearInterval(thinkingInterval);
 
@@ -679,6 +752,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Add first camper card
         addCamperCard();
+
+        // Load initial suggested questions (without camper context)
+        updateSuggestedQuestions();
     };
 
     // Initialize the app
@@ -705,6 +781,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Add first camper card
             addCamperCard();
+
+            // Load initial suggested questions
+            updateSuggestedQuestions();
         }
 
         const welcomeMsg = buildDynamicWelcomeMessage();
