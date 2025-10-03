@@ -420,7 +420,7 @@
 <body>
 
     <header class="dashboard-header">
-        <h1>Parent Portal</h1>
+        <h1>Parent AI Handbook</h1>
     </header>
 
     <aside class="dashboard-sidebar">
@@ -429,25 +429,9 @@
         </div>
         <nav class="sidebar-nav">
             <ul>
-                <li><a href="#">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                    <span>Home</span>
-                </a></li>
-                <li><a href="#">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                    <span>My Campers</span>
-                </a></li>
                 <li><a href="#" class="active">
                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit-3"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                    <span>Register for Camp</span>
-                </a></li>
-                <li><a href="#">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-                    <span>Billing</span>
-                </a></li>
-                <li><a href="#">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                    <span>My Account</span>
+                    <span>Parent AI Handbook</span>
                 </a></li>
             </ul>
         </nav>
@@ -456,8 +440,8 @@
     <main class="dashboard-main">
         <div class="dashboard-grid">
             <div class="dashboard-card registration-card">
-                <h2>Register for Summer 2025</h2>
-                <p>Registration is now open! Choose one of our amazing camps and select a session below to get started. We can't wait to see you this summer!</p>
+                <h2>Configure Demo Data</h2>
+                <p>This demo shows how the parent AI handbook can interact with multiple camps and use personal data to provide customized responses.</p>
                 <div style="margin-top: 1.5rem;">
                     <label for="camp-selector" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Select a Camp:</label>
                     <select id="camp-selector" style="width: 100%; max-width: 400px; padding: 0.75rem 1rem; border-radius: 8px; background-color: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color); font-size: 1rem; cursor: pointer; outline: none;">
@@ -467,7 +451,7 @@
 
                 <div id="personalization-section" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); display: none;">
                     <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-primary);">Personalize Your Experience</h3>
-                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">Add your campers and their details to get personalized answers from the AI assistant.</p>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">Add campers and their details to get personalized answers from the parent AI handbook.</p>
 
                     <div id="segments-loading" style="display: none; padding: 1.5rem; text-align: center;">
                         <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid var(--border-color); border-top-color: var(--accent-primary); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
@@ -483,14 +467,6 @@
                         Add Another Camper
                     </button>
                 </div>
-            </div>
-            <div class="dashboard-card">
-                <h2>My Campers</h2>
-                <p>You have not registered any campers yet. Click 'Begin Registration' to add your first camper and enroll them in a session.</p>
-            </div>
-            <div class="dashboard-card">
-                <h2>Need Help?</h2>
-                 <p>Have questions about registration, camp programs, or billing? Click the chat icon in the bottom right corner to speak with our friendly AI assistant, available 24/7 to help you.</p>
             </div>
         </div>
     </main>
