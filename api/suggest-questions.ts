@@ -24,36 +24,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let questionPrompt = '';
 
     if (camperContext && camperContext.trim()) {
-      questionPrompt = `Based on the camp documentation and the following camper information:
+      questionPrompt = `You are helping generate suggested questions for a parent chatbot. Your task is to analyze the camp documentation and suggest questions that can be FULLY ANSWERED using the available content.
 
+Parent's camper(s):
 ${camperContext}
 
-Generate exactly 3 helpful questions that a parent would likely want to ask about their camper(s)' specific camp experience. Make the questions:
-- Personalized using the campers' first names naturally
-- Relevant to their specific sessions and age groups
+IMPORTANT:
+1. First, identify what topics are actually covered in the camp documentation
+2. Generate exactly 3 questions about those well-documented topics
+3. Try to personalize questions with camper names, sessions, or age groups when it naturally fits the documented content
+4. DO NOT suggest questions about topics that aren't thoroughly covered in the documentation
+5. Prioritize questions about the most detailed/comprehensive topics in the documentation
+
+Make the questions:
+- Answerable from the available documentation
+- Personalized when possible (using camper names/sessions/age groups)
 - Practical and commonly asked by parents
 - Conversational and natural-sounding
 
 Return ONLY a valid JSON object with this exact structure:
 {
   "questions": [
-    "What should Alex pack for Session 1?",
     "What activities are available for Junior campers?",
-    "When are visiting days during Session 1?"
+    "When are visiting days during Alex's Session 1?",
+    "What is the daily schedule at camp?"
   ]
 }`;
     } else {
-      questionPrompt = `Based on the camp documentation, generate exactly 3 helpful questions that parents commonly ask about camp. Make the questions:
-- General and applicable to most parents
-- Practical and informative
+      questionPrompt = `You are helping generate suggested questions for a parent chatbot. Your task is to analyze the camp documentation and suggest questions that can be FULLY ANSWERED using the available content.
+
+IMPORTANT:
+1. First, identify what topics are actually covered in the camp documentation
+2. Generate exactly 3 questions about those well-documented topics
+3. DO NOT suggest questions about topics that aren't thoroughly covered in the documentation
+4. Prioritize questions about the most detailed/comprehensive topics in the documentation
+
+Make the questions:
+- Answerable from the available documentation
+- Practical and commonly asked by parents
 - Conversational and natural-sounding
 
 Return ONLY a valid JSON object with this exact structure:
 {
   "questions": [
-    "What should my camper pack?",
+    "What activities are available at camp?",
     "What is the typical daily schedule?",
-    "How can I communicate with my camper?"
+    "When are visiting days?"
   ]
 }`;
     }
@@ -67,7 +83,7 @@ Return ONLY a valid JSON object with this exact structure:
       body: JSON.stringify({
         model: 'gpt-5-nano',
         input: questionPrompt,
-        instructions: 'You are a helpful assistant that generates suggested questions for parents. Always return valid JSON only, with no additional text or explanation.',
+        instructions: 'You are a helpful assistant that generates suggested questions for parents. Base your questions ONLY on the information retrieved from file_search. Always return valid JSON only, with no additional text or explanation.',
         stream: false,
         reasoning: {
           effort: 'low'

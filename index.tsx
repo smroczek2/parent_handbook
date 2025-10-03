@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const launcher = document.getElementById('chat-launcher') as HTMLButtonElement;
     const widgetContainer = document.getElementById('chat-widget-container') as HTMLDivElement;
     const expandButton = document.getElementById('expand-button') as HTMLButtonElement;
+    const resetButton = document.getElementById('reset-button') as HTMLButtonElement;
     const headerTitle = document.getElementById('header-title') as HTMLHeadingElement;
     const headerSubtitle = document.getElementById('header-subtitle') as HTMLParagraphElement;
     const campSelector = document.getElementById('camp-selector') as HTMLSelectElement;
@@ -722,6 +723,15 @@ document.addEventListener('DOMContentLoaded', () => {
         widgetContainer.classList.toggle('fullscreen');
     }
 
+    const resetConversation = () => {
+        chatContainer.innerHTML = '';
+        const welcomeMsg = buildDynamicWelcomeMessage();
+        addMessage('bot', welcomeMsg);
+
+        // Show suggested questions again
+        updateSuggestedQuestions();
+    }
+
     const switchCamp = async (camp: Camp) => {
         activeCamp = camp;
         headerTitle.textContent = `${camp.name} Parent Handbook`;
@@ -812,6 +822,7 @@ document.addEventListener('DOMContentLoaded', () => {
     inputForm.addEventListener('submit', handleFormSubmit);
     launcher.addEventListener('click', toggleWidget);
     expandButton.addEventListener('click', toggleFullScreen);
+    resetButton.addEventListener('click', resetConversation);
 
     // Initialize the app
     initialize();
