@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let campers: CamperProfile[] = [];
     let nextCamperId = 1;
     let hasUserSentMessage = false;
+    let currentQuestionsFetchController: AbortController | null = null;
 
     // Mock camper names for proof of concept
     const MOCK_CAMPER_NAMES = ['Alex Thompson', 'Jordan Martinez', 'Taylor Kim', 'Casey Johnson'];
@@ -114,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function fetchSuggestedQuestions(vectorStoreId: string, camperContext?: string): Promise<string[]> {
+    async function fetchSuggestedQuestions(vectorStoreId: string, camperContext?: string, signal?: AbortSignal): Promise<string[]> {
         try {
             const response = await fetch(SUGGEST_QUESTIONS_API_ENDPOINT, {
                 method: "POST",
@@ -124,7 +125,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     vectorStoreId,
                     camperContext: camperContext || ''
-                })
+                }),
+                signal
             });
 
             if (!response.ok) {
@@ -134,6 +136,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             return data.questions || [];
         } catch (error) {
+            // Don't log abort errors - they're expected
+            if (error instanceof Error && error.name === 'AbortError') {
+                return [];
+            }
             console.error("Error fetching suggested questions:", error);
             return [];
         }
@@ -170,13 +176,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function updateSuggestedQuestions() {
+        // Immediately hide any stale questions
+        suggestedQuestionsContainer.style.display = 'none';
+
         if (!activeCamp) {
-            suggestedQuestionsContainer.style.display = 'none';
             return;
         }
 
+        // Cancel any previous in-flight request
+        if (currentQuestionsFetchController) {
+            currentQuestionsFetchController.abort();
+        }
+
+        // Create new controller for this request
+        currentQuestionsFetchController = new AbortController();
+
         const camperContext = buildEnhancedCamperContext();
-        const questions = await fetchSuggestedQuestions(activeCamp.vectorStoreId, camperContext);
+        const questions = await fetchSuggestedQuestions(activeCamp.vectorStoreId, camperContext, currentQuestionsFetchController.signal);
         renderSuggestedQuestions(questions);
     }
 
