@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let availableSegments: SegmentOption[] = [];
     let campers: CamperProfile[] = [];
     let nextCamperId = 1;
+    let hasUserSentMessage = false;
 
     // Mock camper names for proof of concept
     const MOCK_CAMPER_NAMES = ['Alex Thompson', 'Jordan Martinez', 'Taylor Kim', 'Casey Johnson'];
@@ -139,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderSuggestedQuestions(questions: string[]) {
-        if (questions.length === 0) {
+        if (questions.length === 0 || hasUserSentMessage) {
             suggestedQuestionsContainer.style.display = 'none';
             return;
         }
@@ -628,6 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
         messageInput.value = '';
 
         // Hide suggested questions after first message
+        hasUserSentMessage = true;
         suggestedQuestionsContainer.style.display = 'none';
 
         if (thinkingInterval) clearInterval(thinkingInterval);
@@ -728,7 +730,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const welcomeMsg = buildDynamicWelcomeMessage();
         addMessage('bot', welcomeMsg);
 
-        // Show suggested questions again
+        // Reset flag and show suggested questions again
+        hasUserSentMessage = false;
         updateSuggestedQuestions();
     }
 
@@ -741,6 +744,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const welcomeMsg = buildDynamicWelcomeMessage();
         addMessage('bot', welcomeMsg);
         messageInput.focus();
+
+        // Reset flag when switching camps
+        hasUserSentMessage = false;
 
         // Show personalization section
         personalizationSection.style.display = 'block';
