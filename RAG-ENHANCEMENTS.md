@@ -75,7 +75,8 @@ Ensures the chatbot ALWAYS follows camp-specific safety rules and behavioral gui
    - Returns empty string if file doesn't exist
 
 2. **Inject Instructions** ([api/chat.ts](api/chat.ts)):
-   - Prepends custom instructions to regular instructions
+   - Prepends custom instructions (with an explicit safety header) to regular instructions
+   - Explicitly tells the model to check safety rules first and obey them verbatim without adding extra details
    - Uses separator lines for clear prioritization
    - Passes combined instructions to OpenAI API
 
