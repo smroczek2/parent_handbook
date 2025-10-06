@@ -1164,36 +1164,10 @@ Replace these placeholders:
 
         // Auto-select first camp if available
         if (availableCamps.length > 0) {
-            activeCamp = availableCamps[0];
-            campSelector.value = activeCamp.vectorStoreId;
-            headerTitle.textContent = `${activeCamp.name} Parent Handbook`;
-            headerSubtitle.textContent = `Ask questions that can be answered by the ${activeCamp.name} parent handbook`;
-
-            // Show custom instructions section
-            customInstructionsSection.style.display = 'block';
-
-            // Load custom instructions for first camp
-            await loadCustomInstructions(activeCamp.vectorStoreId);
-
-            // Load segments for first camp
-            personalizationSection.style.display = 'block';
-            segmentsLoading.style.display = 'block';
-            addCamperButton.style.display = 'none';
-
-            availableSegments = await fetchSegments(activeCamp.vectorStoreId);
-
-            segmentsLoading.style.display = 'none';
-            addCamperButton.style.display = 'flex';
-
-            // Add first camper card
-            addCamperCard();
-
-            // Load initial suggested questions
-            updateSuggestedQuestions();
-
-            // Add initial welcome message
-            const welcomeMsg = buildDynamicWelcomeMessage();
-            addMessage('bot', welcomeMsg);
+            // Setting the value will trigger the change event handler which calls switchCamp()
+            campSelector.value = availableCamps[0].vectorStoreId;
+            // Manually trigger change event to ensure switchCamp is called
+            campSelector.dispatchEvent(new Event('change'));
         }
 
         // Re-enable launcher after initialization
