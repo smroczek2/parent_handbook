@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { message, vectorStoreId, instructions, camperContext, customInstructions } = req.body;
+    const { message, vectorStoreId, instructions, camperContext, customInstructions, conversationHistory } = req.body;
 
     if (!message || !vectorStoreId || !instructions) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -38,6 +38,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 - If information applies to specific sessions or age groups, clearly indicate which camper(s) it relates to
 - Respond conversationally as if you know these specific campers and their camp plans
 - The user may ask questions that are not specific or clear. Think about what they might be asking and provide a helpful answer.`;
+    }
+
+    // 3. Add conversation history context
+    if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      const historyText = conversationHistory.join('\n');
+      finalInstructions = `${finalInstructions}\n\n${'='.repeat(80)}\n\nCONVERSATION HISTORY:\n\n${historyText}\n\nIMPORTANT: Use this conversation history to maintain context and provide coherent follow-up responses. Reference previous questions and answers when relevant.`;
     }
 
     const response = await fetch('https://api.openai.com/v1/responses', {

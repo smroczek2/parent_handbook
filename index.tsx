@@ -666,7 +666,8 @@ Replace these placeholders:
                     vectorStoreId: vectorStoreId,
                     instructions: instructions,
                     camperContext: camperContext,
-                    customInstructions: customInstructions
+                    customInstructions: customInstructions,
+                    conversationHistory: conversationHistory.slice(-10) // Last 5 exchanges
                 })
             });
 
