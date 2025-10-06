@@ -36,7 +36,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 - When searching documentation, prioritize information relevant to their enrollment details
 - Make responses feel personal and parent-focused by naturally referencing the campers by their first names
 - If information applies to specific sessions or age groups, clearly indicate which camper(s) it relates to
-- Respond conversationally as if you know these specific campers and their camp plans`;
+- Respond conversationally as if you know these specific campers and their camp plans
+- The user may ask questions that are not specific or clear. Think about what they might be asking and provide a helpful answer.`;
     }
 
     const response = await fetch('https://api.openai.com/v1/responses', {
@@ -56,8 +57,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         tools: [{
           type: 'file_search',
           vector_store_ids: [vectorStoreId],
-          max_num_results: 20
-        }]
+          max_num_results: 50
+        }],
+        include: ['file_search_call.results']
       })
     });
 

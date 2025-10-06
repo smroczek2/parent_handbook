@@ -22,6 +22,15 @@ interface CamperProfile {
     segments: { [key: string]: string };
 }
 
+interface FileSearchResult {
+    filename: string;
+    score: number;
+    text: string;
+    file_id: string;
+    vector_store_id: string;
+    attributes: Record<string, unknown>;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const chatContainer = document.getElementById('chat-container') as HTMLDivElement;
     const inputForm = document.getElementById('input-area') as HTMLFormElement;
@@ -39,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const campersContainer = document.getElementById('campers-container') as HTMLDivElement;
     const addCamperButton = document.getElementById('add-camper-button') as HTMLButtonElement;
     const suggestedQuestionsContainer = document.getElementById('suggested-questions') as HTMLDivElement;
+    const citationsContainer = document.getElementById('citations-container') as HTMLDivElement;
     const customInstructionsSection = document.getElementById('custom-instructions-section') as HTMLDivElement;
     const customInstructionsToggle = document.getElementById('custom-instructions-toggle') as HTMLButtonElement;
     const customInstructionsContent = document.getElementById('custom-instructions-content') as HTMLDivElement;
@@ -639,7 +649,7 @@ Replace these placeholders:
         updateSuggestedQuestions();
     }
 
-    async function* queryStream(userMessage: string, vectorStoreId: string, instructions: string): AsyncGenerator<string, void, unknown> {
+    async function* queryStream(userMessage: string, vectorStoreId: string, instructions: string): AsyncGenerator<{ text?: string; citations?: FileSearchResult[] }, void, unknown> {
         try {
             const camperContext = buildEnhancedCamperContext();
 
@@ -697,18 +707,24 @@ Replace these placeholders:
                                 if (delta?.content) {
                                     for (const contentItem of delta.content) {
                                         if (contentItem.type === 'output_text' && contentItem.text) {
-                                            yield contentItem.text;
+                                            yield { text: contentItem.text };
                                         }
                                     }
                                 }
                             }
                             // Also try handling response.output_text.delta event type
                             else if (parsed.type === 'response.output_text.delta' && parsed.delta) {
-                                yield parsed.delta;
+                                yield { text: parsed.delta };
                             }
                             // Handle content_block.delta event type (alternative format)
                             else if (parsed.type === 'content_block.delta' && parsed.delta?.text) {
-                                yield parsed.delta.text;
+                                yield { text: parsed.delta.text };
+                            }
+                            // Handle file search results from response.output_item.done event
+                            else if (parsed.type === 'response.output_item.done') {
+                                if (parsed.item?.type === 'file_search_call' && parsed.item?.results) {
+                                    yield { citations: parsed.item.results };
+                                }
                             }
                         } catch (e) {
                             console.warn('Failed to parse SSE data:', data);
@@ -718,7 +734,7 @@ Replace these placeholders:
             }
         } catch (error) {
             console.error("Failed to query API:", error);
-            yield "Sorry, I encountered an error connecting to the service. Please check the console for details.";
+            yield { text: "Sorry, I encountered an error connecting to the service. Please check the console for details." };
         }
     }
     
@@ -790,7 +806,7 @@ Replace these placeholders:
     const addMessage = (sender: 'user' | 'bot', text: string, isThinking: boolean = false) => {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', `${sender}-message`);
-        
+
         if (isThinking) {
             messageElement.classList.add('thinking');
             messageElement.id = 'thinking-message';
@@ -805,6 +821,117 @@ Replace these placeholders:
         chatContainer.appendChild(messageElement);
         chatContainer.scrollTop = chatContainer.scrollHeight;
         return messageElement;
+    };
+
+    const renderCitations = (citations: FileSearchResult[]) => {
+        citationsContainer.innerHTML = '';
+
+        if (!citations || citations.length === 0) {
+            citationsContainer.style.display = 'none';
+            return;
+        }
+
+        // Create header with toggle button
+        const header = document.createElement('div');
+        header.className = 'citations-header';
+
+        const headerLeft = document.createElement('div');
+        headerLeft.className = 'citations-header-left';
+
+        const heading = document.createElement('h2');
+        heading.textContent = 'Sources';
+        headerLeft.appendChild(heading);
+
+        const count = document.createElement('span');
+        count.className = 'citations-count';
+        count.textContent = `${citations.length}`;
+        headerLeft.appendChild(count);
+
+        header.appendChild(headerLeft);
+
+        // Create chevron icon
+        const chevron = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        chevron.setAttribute('class', 'citations-toggle-icon');
+        chevron.setAttribute('width', '20');
+        chevron.setAttribute('height', '20');
+        chevron.setAttribute('viewBox', '0 0 24 24');
+        chevron.setAttribute('fill', 'none');
+        chevron.setAttribute('stroke', 'currentColor');
+        chevron.setAttribute('stroke-width', '2');
+        chevron.setAttribute('stroke-linecap', 'round');
+        chevron.setAttribute('stroke-linejoin', 'round');
+
+        const chevronPath = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+        chevronPath.setAttribute('points', '6 9 12 15 18 9');
+        chevron.appendChild(chevronPath);
+
+        header.appendChild(chevron);
+
+        citationsContainer.appendChild(header);
+
+        // Create collapsible content container
+        const content = document.createElement('div');
+        content.className = 'citations-content';
+
+        const description = document.createElement('p');
+        description.className = 'citations-description';
+        description.textContent = 'The following sources were used to answer your question:';
+        content.appendChild(description);
+
+        const grid = document.createElement('div');
+        grid.className = 'citations-grid';
+
+        citations.forEach((citation, index) => {
+            const card = document.createElement('div');
+            card.className = 'citation-card';
+
+            const title = document.createElement('div');
+            title.className = 'citation-card-title';
+
+            const number = document.createElement('span');
+            number.className = 'citation-number';
+            number.textContent = `${index + 1}`;
+            title.appendChild(number);
+
+            const filename = document.createElement('span');
+            filename.textContent = citation.filename;
+            title.appendChild(filename);
+
+            card.appendChild(title);
+
+            if (citation.text) {
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'citation-card-content';
+                contentDiv.textContent = citation.text;
+                card.appendChild(contentDiv);
+            }
+
+            if (citation.score !== undefined) {
+                const score = document.createElement('div');
+                score.className = 'citation-card-score';
+                score.textContent = `Relevance: ${(citation.score * 100).toFixed(1)}%`;
+                card.appendChild(score);
+            }
+
+            grid.appendChild(card);
+        });
+
+        content.appendChild(grid);
+        citationsContainer.appendChild(content);
+
+        // Add click handler to toggle
+        header.addEventListener('click', () => {
+            const isExpanded = content.classList.contains('expanded');
+            if (isExpanded) {
+                content.classList.remove('expanded');
+                chevron.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+                chevron.classList.add('expanded');
+            }
+        });
+
+        citationsContainer.style.display = 'flex';
     };
 
     const handleFormSubmit = async (event: Event) => {
@@ -886,31 +1013,51 @@ Replace these placeholders:
         // Remove thinking message once streaming starts
         let streamingMessageElement: HTMLElement | null = null;
         let fullResponseText = '';
+        let citations: FileSearchResult[] = [];
 
         try {
             const stream = queryStream(searchQuery, vectorStoreId, instructions);
 
-            for await (const textChunk of stream) {
-                // Remove thinking message on first chunk
-                if (thinkingInterval) {
-                    clearInterval(thinkingInterval);
-                    thinkingInterval = null;
-                    thinkingMessage.remove();
+            for await (const chunk of stream) {
+                // Handle text chunks
+                if (chunk.text) {
+                    // Remove thinking message on first chunk
+                    if (thinkingInterval) {
+                        clearInterval(thinkingInterval);
+                        thinkingInterval = null;
+                        thinkingMessage.remove();
+                    }
+
+                    // Create message element on first chunk
+                    if (!streamingMessageElement) {
+                        streamingMessageElement = addMessage('bot', '');
+                    }
+
+                    // Append the chunk to our full response
+                    fullResponseText += chunk.text;
+
+                    // Update the message element with markdown rendering
+                    applyMarkdown(streamingMessageElement, fullResponseText);
+
+                    // Scroll to bottom after DOM updates
+                    requestAnimationFrame(() => {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    });
                 }
 
-                // Create message element on first chunk
-                if (!streamingMessageElement) {
-                    streamingMessageElement = addMessage('bot', '');
+                // Handle citations
+                if (chunk.citations) {
+                    citations = chunk.citations;
                 }
+            }
 
-                // Append the chunk to our full response
-                fullResponseText += textChunk;
-
-                // Update the message element with markdown rendering
-                applyMarkdown(streamingMessageElement, fullResponseText);
-
-                // Scroll to bottom
-                chatContainer.scrollTop = chatContainer.scrollHeight;
+            // Render citations after streaming is complete
+            if (citations.length > 0) {
+                renderCitations(citations);
+                // Scroll to show citations after they're rendered
+                requestAnimationFrame(() => {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                });
             }
 
             // Add to conversation history after successful response
@@ -947,6 +1094,8 @@ Replace these placeholders:
 
     const resetConversation = () => {
         chatContainer.innerHTML = '';
+        citationsContainer.style.display = 'none';
+        citationsContainer.innerHTML = '';
         conversationHistory = []; // Clear conversation history
         const welcomeMsg = buildDynamicWelcomeMessage();
         addMessage('bot', welcomeMsg);
@@ -962,6 +1111,8 @@ Replace these placeholders:
         headerSubtitle.textContent = `Ask questions that can be answered by the ${camp.name} parent handbook.`;
 
         chatContainer.innerHTML = '';
+        citationsContainer.style.display = 'none';
+        citationsContainer.innerHTML = '';
         conversationHistory = []; // Clear conversation history when switching camps
         const welcomeMsg = buildDynamicWelcomeMessage();
         addMessage('bot', welcomeMsg);
@@ -1003,6 +1154,10 @@ Replace these placeholders:
 
     // Initialize the app
     async function initialize() {
+        // Disable launcher and show loading state
+        launcher.disabled = true;
+        launcher.classList.add('loading');
+
         availableCamps = await fetchVectorStores();
         populateCampSelector(availableCamps);
 
@@ -1034,10 +1189,15 @@ Replace these placeholders:
 
             // Load initial suggested questions
             updateSuggestedQuestions();
+
+            // Add initial welcome message
+            const welcomeMsg = buildDynamicWelcomeMessage();
+            addMessage('bot', welcomeMsg);
         }
 
-        const welcomeMsg = buildDynamicWelcomeMessage();
-        addMessage('bot', welcomeMsg);
+        // Re-enable launcher after initialization
+        launcher.disabled = false;
+        launcher.classList.remove('loading');
     }
 
     campSelector.addEventListener('change', () => {
