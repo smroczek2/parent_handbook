@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentQuestionsFetchController: AbortController | null = null;
     let conversationHistory: string[] = [];
     let cachedCustomInstructions: { [vectorStoreId: string]: string } = {};
+    let isInitializing = true;
 
     // Mock camper names for proof of concept
     const MOCK_CAMPER_NAMES = ['Alex Thompson', 'Jordan Martinez', 'Taylor Kim', 'Casey Johnson'];
@@ -943,6 +944,11 @@ Replace these placeholders:
             return;
         }
 
+        // Check if still initializing
+        if (isInitializing) {
+            return;
+        }
+
         messageInput.disabled = true;
         sendButton.disabled = true;
 
@@ -1107,6 +1113,12 @@ Replace these placeholders:
     }
 
     const switchCamp = async (camp: Camp) => {
+        // Disable launcher and form during camp switch
+        launcher.disabled = true;
+        launcher.classList.add('loading');
+        messageInput.disabled = true;
+        sendButton.disabled = true;
+
         activeCamp = camp;
         headerTitle.textContent = `${camp.name} Parent Handbook`;
         headerSubtitle.textContent = `Ask questions that can be answered by the ${camp.name} parent handbook.`;
@@ -1117,7 +1129,6 @@ Replace these placeholders:
         conversationHistory = []; // Clear conversation history when switching camps
         const welcomeMsg = buildDynamicWelcomeMessage();
         addMessage('bot', welcomeMsg);
-        messageInput.focus();
 
         // Reset flag when switching camps
         hasUserSentMessage = false;
@@ -1151,6 +1162,13 @@ Replace these placeholders:
 
         // Load initial suggested questions (without camper context)
         updateSuggestedQuestions();
+
+        // Re-enable launcher and form after camp switch completes
+        launcher.disabled = false;
+        launcher.classList.remove('loading');
+        messageInput.disabled = false;
+        sendButton.disabled = false;
+        messageInput.focus();
     };
 
     // Initialize the app
@@ -1158,24 +1176,30 @@ Replace these placeholders:
         // Disable launcher and show loading state
         launcher.disabled = true;
         launcher.classList.add('loading');
+        messageInput.disabled = true;
+        sendButton.disabled = true;
 
         availableCamps = await fetchVectorStores();
         populateCampSelector(availableCamps);
 
         // Auto-select first camp if available
         if (availableCamps.length > 0) {
-            // Setting the value will trigger the change event handler which calls switchCamp()
             campSelector.value = availableCamps[0].vectorStoreId;
-            // Manually trigger change event to ensure switchCamp is called
-            campSelector.dispatchEvent(new Event('change'));
+            // Await switchCamp to complete before re-enabling
+            await switchCamp(availableCamps[0]);
         }
 
-        // Re-enable launcher after initialization
+        // Initialization complete
+        isInitializing = false;
+
+        // Re-enable launcher and form after initialization
         launcher.disabled = false;
         launcher.classList.remove('loading');
+        messageInput.disabled = false;
+        sendButton.disabled = false;
     }
 
-    campSelector.addEventListener('change', () => {
+    campSelector.addEventListener('change', async () => {
         const selectedVectorStoreId = campSelector.value;
 
         if (!selectedVectorStoreId) {
@@ -1184,12 +1208,14 @@ Replace these placeholders:
             headerSubtitle.textContent = 'Select a camp to get started';
             customInstructionsSection.style.display = 'none';
             personalizationSection.style.display = 'none';
+            messageInput.disabled = true;
+            sendButton.disabled = true;
             return;
         }
 
         const selectedCamp = availableCamps.find(camp => camp.vectorStoreId === selectedVectorStoreId);
         if (selectedCamp) {
-            switchCamp(selectedCamp);
+            await switchCamp(selectedCamp);
         }
     });
 

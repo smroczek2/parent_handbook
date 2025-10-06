@@ -3,7 +3,9 @@
     "allow": [
       "Bash(mv:*)",
       "Bash(rm:*)",
-      "Read(//dev/**)"
+      "Read(//dev/**)",
+      "WebSearch",
+      "WebFetch"
     ],
     "deny": [],
     "ask": []

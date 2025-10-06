@@ -63,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         tools: [{
           type: 'file_search',
           vector_store_ids: [vectorStoreId],
-          max_num_results: 50
+          max_num_results: 20
         }],
         include: ['file_search_call.results']
       })
