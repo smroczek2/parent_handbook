@@ -48,7 +48,7 @@ Question: ${question}
 
 Query:`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -56,12 +56,12 @@ Query:`;
       },
       body: JSON.stringify({
         model: 'gpt-5-nano',
-        messages: [{
-          role: 'user',
-          content: prompt
-        }],
-        temperature: 0.3,
-        max_completion_tokens: 50
+        input: prompt,
+        instructions: 'You are a helpful assistant that transforms user questions into concise search queries. Only generate the search query, no meta comments, no explanation.',
+        stream: false,
+        reasoning: {
+          effort: 'low'
+        }
       })
     });
 
@@ -72,11 +72,24 @@ Query:`;
     }
 
     const data = await response.json();
-    const transformedQuery = data.choices[0].message.content.trim();
+
+    // Extract the text content from the response
+    let transformedQuery = '';
+    if (data.output && data.output.length > 0) {
+      for (const item of data.output) {
+        if (item.type === 'message' && item.content) {
+          for (const contentItem of item.content) {
+            if (contentItem.type === 'output_text' && contentItem.text) {
+              transformedQuery += contentItem.text;
+            }
+          }
+        }
+      }
+    }
 
     return res.status(200).json({
       originalQuestion: question,
-      transformedQuery: transformedQuery
+      transformedQuery: transformedQuery.trim()
     });
 
   } catch (error) {
