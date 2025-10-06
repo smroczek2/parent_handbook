@@ -14,16 +14,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { message, vectorStoreId, instructions, camperContext } = req.body;
+    const { message, vectorStoreId, instructions, camperContext, customInstructions } = req.body;
 
     if (!message || !vectorStoreId || !instructions) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Prepend camper context to instructions if provided
-    let enhancedInstructions = instructions;
+    // Build enhanced instructions with custom instructions having highest priority
+    let finalInstructions = instructions;
+
+    // 1. Add custom instructions FIRST (highest priority)
+    if (customInstructions && customInstructions.trim()) {
+      finalInstructions = `${customInstructions}\n\n${'='.repeat(80)}\n\nREGULAR INSTRUCTIONS:\n\n${instructions}`;
+    }
+
+    // 2. Add camper context
     if (camperContext && camperContext.trim()) {
-      enhancedInstructions = `${camperContext}\n\n${instructions}\n\nIMPORTANT PERSONALIZATION GUIDELINES:
+      finalInstructions = `${finalInstructions}\n\n${'='.repeat(80)}\n\nPERSONALIZATION CONTEXT:\n\n${camperContext}\n\nIMPORTANT PERSONALIZATION GUIDELINES:
 - Always use first names when referring to specific campers (never use full names or last names)
 - Tailor your answers to the specific sessions and age groups the campers are enrolled in
 - When searching documentation, prioritize information relevant to their enrollment details
@@ -41,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify({
         model: 'gpt-5-mini',
         input: message,
-        instructions: enhancedInstructions,
+        instructions: finalInstructions,
         stream: true,
         reasoning: {
           effort: 'low'

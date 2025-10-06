@@ -39,12 +39,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const campersContainer = document.getElementById('campers-container') as HTMLDivElement;
     const addCamperButton = document.getElementById('add-camper-button') as HTMLButtonElement;
     const suggestedQuestionsContainer = document.getElementById('suggested-questions') as HTMLDivElement;
+    const customInstructionsSection = document.getElementById('custom-instructions-section') as HTMLDivElement;
+    const customInstructionsToggle = document.getElementById('custom-instructions-toggle') as HTMLButtonElement;
+    const customInstructionsContent = document.getElementById('custom-instructions-content') as HTMLDivElement;
+    const customInstructionsIndicator = document.getElementById('custom-instructions-indicator') as HTMLSpanElement;
+    const customInstructionsChevron = document.getElementById('custom-instructions-chevron') as unknown as SVGElement;
+    const customInstructionsInput = document.getElementById('custom-instructions-input') as HTMLTextAreaElement;
+    const saveCustomInstructionsButton = document.getElementById('save-custom-instructions-button') as HTMLButtonElement;
+    const loadTemplateButton = document.getElementById('load-template-button') as HTMLButtonElement;
+    const customInstructionsSaveStatus = document.getElementById('custom-instructions-save-status') as HTMLDivElement;
 
     // Use Vercel serverless functions instead of direct OpenAI API calls
     const CHAT_API_ENDPOINT = "/api/chat";
     const VECTOR_STORES_API_ENDPOINT = "/api/vector-stores";
     const EXTRACT_SEGMENTS_API_ENDPOINT = "/api/extract-segments";
     const SUGGEST_QUESTIONS_API_ENDPOINT = "/api/suggest-questions";
+    const TRANSFORM_QUERY_API_ENDPOINT = "/api/transform-query";
+    const LOAD_CUSTOM_INSTRUCTIONS_API_ENDPOINT = "/api/load-custom-instructions";
+    const UPLOAD_CUSTOM_INSTRUCTIONS_API_ENDPOINT = "/api/upload-custom-instructions";
 
     const WELCOME_MESSAGE = "Hi! I can help answer questions about your selected camp. What would you like to know?";
     const INSTRUCTIONS = "You are a helpful AI assistant for a summer camp. Your role is to help parents find answers to their questions about the camp by searching through the camp's documentation. Be friendly, informative, and concise. Focus on providing accurate information from the documentation. If a question cannot be answered from the available documents, politely let the parent know.\n\nIMPORTANT: Answer ONLY the specific question asked. Do NOT suggest follow-up questions, additional actions, or offer to help with anything else. Simply provide the requested information and end your response there.";
@@ -57,6 +69,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let nextCamperId = 1;
     let hasUserSentMessage = false;
     let currentQuestionsFetchController: AbortController | null = null;
+    let conversationHistory: string[] = [];
+    let cachedCustomInstructions: { [vectorStoreId: string]: string } = {};
 
     // Mock camper names for proof of concept
     const MOCK_CAMPER_NAMES = ['Alex Thompson', 'Jordan Martinez', 'Taylor Kim', 'Casey Johnson'];
@@ -113,6 +127,165 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error fetching segments:", error);
             return [];
         }
+    }
+
+    async function loadCustomInstructions(vectorStoreId: string): Promise<string> {
+        // Check if we already loaded this camp's instructions
+        if (cachedCustomInstructions[vectorStoreId]) {
+            console.log(`Using cached custom instructions for ${vectorStoreId}`);
+            return cachedCustomInstructions[vectorStoreId];
+        }
+
+        console.log(`Fetching custom instructions for ${vectorStoreId}`);
+
+        try {
+            const response = await fetch(LOAD_CUSTOM_INSTRUCTIONS_API_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vectorStoreId })
+            });
+
+            if (!response.ok) {
+                console.warn('Failed to load custom instructions');
+                return '';
+            }
+
+            const data = await response.json();
+            const instructions = data.customInstructions || '';
+
+            // Cache for this specific camp (keyed by vectorStoreId)
+            cachedCustomInstructions[vectorStoreId] = instructions;
+
+            console.log(`Cached custom instructions for ${vectorStoreId}`, instructions ? '(content loaded)' : '(empty)');
+
+            // Update UI status
+            updateCustomInstructionsUI(instructions);
+
+            return instructions;
+        } catch (error) {
+            console.error('Error loading custom instructions:', error);
+            return '';
+        }
+    }
+
+    function updateCustomInstructionsUI(instructions: string) {
+        if (instructions && instructions.trim()) {
+            customInstructionsIndicator.style.display = 'inline-flex';
+            customInstructionsInput.value = instructions;
+        } else {
+            customInstructionsIndicator.style.display = 'none';
+            customInstructionsInput.value = '';
+        }
+    }
+
+    function toggleCustomInstructions() {
+        const isExpanded = customInstructionsContent.style.display !== 'none';
+
+        if (isExpanded) {
+            customInstructionsContent.style.display = 'none';
+            customInstructionsChevron.style.transform = 'rotate(0deg)';
+        } else {
+            customInstructionsContent.style.display = 'block';
+            customInstructionsChevron.style.transform = 'rotate(180deg)';
+        }
+    }
+
+    async function saveCustomInstructions() {
+        if (!activeCamp) {
+            showSaveStatus('Please select a camp first', 'error');
+            return;
+        }
+
+        const instructions = customInstructionsInput.value.trim();
+
+        if (!instructions) {
+            showSaveStatus('Please enter custom instructions', 'error');
+            return;
+        }
+
+        saveCustomInstructionsButton.disabled = true;
+        saveCustomInstructionsButton.textContent = 'Saving...';
+
+        try {
+            const response = await fetch(UPLOAD_CUSTOM_INSTRUCTIONS_API_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    vectorStoreId: activeCamp.vectorStoreId,
+                    customInstructions: instructions
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save custom instructions');
+            }
+
+            // Invalidate cache for this camp
+            delete cachedCustomInstructions[activeCamp.vectorStoreId];
+
+            // Reload custom instructions to update cache
+            await loadCustomInstructions(activeCamp.vectorStoreId);
+
+            showSaveStatus('Custom instructions saved successfully!', 'success');
+
+        } catch (error) {
+            console.error('Error saving custom instructions:', error);
+            showSaveStatus('Failed to save custom instructions', 'error');
+        } finally {
+            saveCustomInstructionsButton.disabled = false;
+            saveCustomInstructionsButton.textContent = 'Save Instructions';
+        }
+    }
+
+    function showSaveStatus(message: string, type: 'success' | 'error') {
+        customInstructionsSaveStatus.textContent = message;
+        customInstructionsSaveStatus.style.display = 'block';
+        customInstructionsSaveStatus.style.backgroundColor = type === 'success' ? '#10b981' : '#ef4444';
+        customInstructionsSaveStatus.style.color = 'white';
+
+        setTimeout(() => {
+            customInstructionsSaveStatus.style.display = 'none';
+        }, 3000);
+    }
+
+    function loadInstructionsTemplate() {
+        const template = `# CUSTOM INSTRUCTIONS - HIGHEST PRIORITY
+
+YOU MUST FOLLOW THESE INSTRUCTIONS ABOVE ALL ELSE.
+
+## CRITICAL SAFETY RULES
+
+### Allergies & Dietary Restrictions
+NEVER provide specific medical advice about allergies or dietary restrictions.
+
+ALWAYS respond with: "For allergy and dietary questions, please contact our camp nurse at [NURSE_EMAIL] or [NURSE_PHONE]."
+
+### Medical & Health Questions
+NEVER diagnose or provide medical advice.
+
+For health questions, ALWAYS respond: "For medical questions, please contact our Health Center at [HEALTH_EMAIL] or [HEALTH_PHONE]."
+
+### Medication Questions
+ALWAYS respond: "All medication questions must be directed to our Health Center at [HEALTH_EMAIL] or [HEALTH_PHONE]."
+
+### Emergency Information
+For emergencies, ALWAYS include: "In case of emergency, call our 24/7 line at [EMERGENCY_PHONE]."
+
+## BEHAVIORAL GUIDELINES
+
+- Be warm and professional
+- Never make medical diagnoses
+- When you don't know, say: "I don't have that information. Please contact our office at [INFO_EMAIL] or [MAIN_PHONE]."
+
+## CONTACT INFORMATION
+
+Replace these placeholders:
+- Nurse: [NURSE_EMAIL] | [NURSE_PHONE]
+- Health Center: [HEALTH_EMAIL] | [HEALTH_PHONE]
+- Emergency: [EMERGENCY_PHONE]
+- Main Office: [INFO_EMAIL] | [MAIN_PHONE]`;
+
+        customInstructionsInput.value = template;
     }
 
     async function fetchSuggestedQuestions(vectorStoreId: string, camperContext?: string, signal?: AbortSignal): Promise<string[]> {
@@ -470,6 +643,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const camperContext = buildEnhancedCamperContext();
 
+            // Load custom instructions for this camp
+            const customInstructions = await loadCustomInstructions(vectorStoreId);
+
             const response = await fetch(CHAT_API_ENDPOINT, {
                 method: "POST",
                 headers: {
@@ -479,7 +655,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     message: userMessage,
                     vectorStoreId: vectorStoreId,
                     instructions: instructions,
-                    camperContext: camperContext
+                    camperContext: camperContext,
+                    customInstructions: customInstructions
                 })
             });
 
@@ -681,6 +858,28 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Transform the query for better vector search
+        let searchQuery = userMessage;
+        try {
+            const transformResponse = await fetch(TRANSFORM_QUERY_API_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question: userMessage,
+                    conversationHistory: conversationHistory.slice(-6) // Last 3 exchanges
+                })
+            });
+
+            if (transformResponse.ok) {
+                const transformData = await transformResponse.json();
+                searchQuery = transformData.transformedQuery;
+                console.log('Query transformed:', userMessage, '→', searchQuery);
+            }
+        } catch (error) {
+            console.warn('Query transformation failed, using original:', error);
+            // Fall back to original question if transformation fails
+        }
+
         const vectorStoreId = activeCamp.vectorStoreId;
         const instructions = INSTRUCTIONS;
 
@@ -689,7 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let fullResponseText = '';
 
         try {
-            const stream = queryStream(userMessage, vectorStoreId, instructions);
+            const stream = queryStream(searchQuery, vectorStoreId, instructions);
 
             for await (const textChunk of stream) {
                 // Remove thinking message on first chunk
@@ -713,6 +912,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Scroll to bottom
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }
+
+            // Add to conversation history after successful response
+            conversationHistory.push(`User: ${userMessage}`);
+            conversationHistory.push(`Assistant: ${fullResponseText}`);
+
         } catch (error) {
             console.error('Streaming error:', error);
             if (thinkingInterval) {
@@ -724,7 +928,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 addMessage('bot', 'Sorry, I encountered an error. Please try again.');
             }
         }
-        
+
         messageInput.disabled = false;
         sendButton.disabled = false;
         messageInput.focus();
@@ -743,6 +947,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const resetConversation = () => {
         chatContainer.innerHTML = '';
+        conversationHistory = []; // Clear conversation history
         const welcomeMsg = buildDynamicWelcomeMessage();
         addMessage('bot', welcomeMsg);
 
@@ -757,12 +962,16 @@ document.addEventListener('DOMContentLoaded', () => {
         headerSubtitle.textContent = `Ask questions that can be answered by the ${camp.name} parent handbook.`;
 
         chatContainer.innerHTML = '';
+        conversationHistory = []; // Clear conversation history when switching camps
         const welcomeMsg = buildDynamicWelcomeMessage();
         addMessage('bot', welcomeMsg);
         messageInput.focus();
 
         // Reset flag when switching camps
         hasUserSentMessage = false;
+
+        // Show custom instructions section
+        customInstructionsSection.style.display = 'block';
 
         // Show personalization section
         personalizationSection.style.display = 'block';
@@ -774,6 +983,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show loading indicator
         segmentsLoading.style.display = 'block';
         addCamperButton.style.display = 'none';
+
+        // Pre-load custom instructions for this camp (will be cached)
+        await loadCustomInstructions(camp.vectorStoreId);
 
         // Fetch and render new segments for this camp
         availableSegments = await fetchSegments(camp.vectorStoreId);
@@ -800,6 +1012,12 @@ document.addEventListener('DOMContentLoaded', () => {
             campSelector.value = activeCamp.vectorStoreId;
             headerTitle.textContent = `${activeCamp.name} Parent Handbook`;
             headerSubtitle.textContent = `Ask questions that can be answered by the ${activeCamp.name} parent handbook`;
+
+            // Show custom instructions section
+            customInstructionsSection.style.display = 'block';
+
+            // Load custom instructions for first camp
+            await loadCustomInstructions(activeCamp.vectorStoreId);
 
             // Load segments for first camp
             personalizationSection.style.display = 'block';
@@ -829,6 +1047,7 @@ document.addEventListener('DOMContentLoaded', () => {
             activeCamp = null;
             headerTitle.textContent = 'Parent Handbook';
             headerSubtitle.textContent = 'Select a camp to get started';
+            customInstructionsSection.style.display = 'none';
             personalizationSection.style.display = 'none';
             return;
         }
@@ -840,6 +1059,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     addCamperButton.addEventListener('click', addCamperCard);
+    customInstructionsToggle.addEventListener('click', toggleCustomInstructions);
+    saveCustomInstructionsButton.addEventListener('click', saveCustomInstructions);
+    loadTemplateButton.addEventListener('click', loadInstructionsTemplate);
 
     inputForm.addEventListener('submit', handleFormSubmit);
     launcher.addEventListener('click', toggleWidget);
