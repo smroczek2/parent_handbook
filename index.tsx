@@ -95,32 +95,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchVectorStores(): Promise<Camp[]> {
-        // Hardcoded vector stores as fallback when API is down
-        const hardcodedStores: Camp[] = [
-            {
-                id: 'vs_68e527b689c48191a3e52f63dcf8119d',
-                name: 'Camp Colorado',
-                vectorStoreId: 'vs_68e527b689c48191a3e52f63dcf8119d'
-            }
-        ];
-
         try {
             const response = await fetch(VECTOR_STORES_API_ENDPOINT, {
                 method: "GET"
             });
 
             if (!response.ok) {
-                console.warn('Vector stores API failed, using hardcoded stores');
-                return hardcodedStores;
+                throw new Error(`Failed to fetch vector stores: ${response.status} ${response.statusText}`);
             }
 
             const data = await response.json();
             const vectorStores: VectorStore[] = data.data || [];
-
-            if (vectorStores.length === 0) {
-                console.warn('No vector stores returned from API, using hardcoded stores');
-                return hardcodedStores;
-            }
 
             return vectorStores.map(vs => ({
                 id: vs.id,
@@ -128,8 +113,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 vectorStoreId: vs.id
             }));
         } catch (error) {
-            console.error("Error fetching vector stores, using hardcoded stores:", error);
-            return hardcodedStores;
+            console.error("Error fetching vector stores:", error);
+            return [];
         }
     }
 
