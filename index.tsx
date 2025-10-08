@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const customInstructionsChevron = document.getElementById('custom-instructions-chevron') as unknown as SVGElement;
     const customInstructionsInput = document.getElementById('custom-instructions-input') as HTMLTextAreaElement;
     const saveCustomInstructionsButton = document.getElementById('save-custom-instructions-button') as HTMLButtonElement;
+    const deleteCustomInstructionsButton = document.getElementById('delete-custom-instructions-button') as HTMLButtonElement;
     const loadTemplateButton = document.getElementById('load-template-button') as HTMLButtonElement;
     const customInstructionsSaveStatus = document.getElementById('custom-instructions-save-status') as HTMLDivElement;
 
@@ -67,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const TRANSFORM_QUERY_API_ENDPOINT = "/api/transform-query";
     const LOAD_CUSTOM_INSTRUCTIONS_API_ENDPOINT = "/api/load-custom-instructions";
     const UPLOAD_CUSTOM_INSTRUCTIONS_API_ENDPOINT = "/api/upload-custom-instructions";
+    const DELETE_CUSTOM_INSTRUCTIONS_API_ENDPOINT = "/api/delete-custom-instructions";
 
     const WELCOME_MESSAGE = "Hi! I can help answer questions about your selected camp. What would you like to know?";
     const INSTRUCTIONS = "You are a helpful AI assistant for a summer camp. Your role is to help parents find answers to their questions about the camp by searching through the camp's documentation. Be friendly, informative, and concise. Focus on providing accurate information from the documentation. If a question cannot be answered from the available documents, politely let the parent know.\n\nIMPORTANT: Answer ONLY the specific question asked. Do NOT suggest follow-up questions, additional actions, or offer to help with anything else. Simply provide the requested information and end your response there.";
@@ -119,6 +121,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchSegments(vectorStoreId: string): Promise<SegmentOption[]> {
+        // Check if this is Camp Colorado and return hardcoded segments
+        const campName = availableCamps.find(c => c.vectorStoreId === vectorStoreId)?.name.toLowerCase();
+        if (campName && campName.includes('colorado')) {
+            return [
+                {
+                    label: 'Session',
+                    values: ['Full Summer', 'First Half', 'Second Half']
+                },
+                {
+                    label: 'Age',
+                    values: ['8-10', '11-13', '14-17']
+                }
+            ];
+        }
+
+        // For other camps, fetch dynamically from API
         try {
             const response = await fetch(EXTRACT_SEGMENTS_API_ENDPOINT, {
                 method: "POST",
@@ -259,6 +277,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
+    async function deleteCustomInstructions() {
+        if (!activeCamp) {
+            showSaveStatus('Please select a camp first', 'error');
+            return;
+        }
+
+        // Confirm deletion
+        if (!confirm('Are you sure you want to delete the custom instructions? This cannot be undone.')) {
+            return;
+        }
+
+        deleteCustomInstructionsButton.disabled = true;
+        deleteCustomInstructionsButton.textContent = 'Deleting...';
+
+        try {
+            const response = await fetch(DELETE_CUSTOM_INSTRUCTIONS_API_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    vectorStoreId: activeCamp.vectorStoreId
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete custom instructions');
+            }
+
+            // Invalidate cache for this camp
+            delete cachedCustomInstructions[activeCamp.vectorStoreId];
+
+            // Clear the text area
+            customInstructionsInput.value = '';
+
+            // Update UI
+            customInstructionsIndicator.style.display = 'none';
+
+            showSaveStatus('Custom instructions deleted successfully!', 'success');
+
+        } catch (error) {
+            console.error('Error deleting custom instructions:', error);
+            showSaveStatus('Failed to delete custom instructions', 'error');
+        } finally {
+            deleteCustomInstructionsButton.disabled = false;
+            deleteCustomInstructionsButton.textContent = 'Delete';
+        }
+    }
+
     function loadInstructionsTemplate() {
         const template = `# CUSTOM INSTRUCTIONS - HIGHEST PRIORITY
 
@@ -267,9 +332,20 @@ YOU MUST FOLLOW THESE INSTRUCTIONS ABOVE ALL ELSE.
 ## CRITICAL SAFETY RULES
 
 ### Allergies & Dietary Restrictions
-NEVER provide specific medical advice about allergies or dietary restrictions.
+When parents ask about ANY food items, snacks, or meals - even seemingly innocuous items - you MUST carefully consider if they could contain allergens (nuts, dairy, gluten, eggs, shellfish, soy, etc.).
 
-ALWAYS respond with: "For allergy and dietary questions, please contact our camp nurse at [NURSE_EMAIL] or [NURSE_PHONE]."
+Common items that contain allergens include (but are not limited to):
+- Trail mix, granola bars, energy bars (often contain nuts, gluten, dairy)
+- Cookies, brownies, baked goods (often contain nuts, gluten, dairy, eggs)
+- Candy, chocolate (often contain nuts, dairy, soy)
+- Crackers, chips (may contain gluten, dairy)
+- Protein shakes, supplements (often contain dairy, soy, nuts)
+
+If a food question involves ANY item that could potentially contain allergens, or if the parent is asking about food restrictions/policies, you MUST respond with:
+
+"For allergy and dietary questions, please contact our camp nurse at [NURSE_EMAIL] or [NURSE_PHONE]."
+
+NEVER make assumptions about whether a specific food is "safe" - always defer to the camp nurse.
 
 ### Medical & Health Questions
 NEVER diagnose or provide medical advice.
@@ -287,6 +363,7 @@ For emergencies, ALWAYS include: "In case of emergency, call our 24/7 line at [E
 - Be warm and professional
 - Never make medical diagnoses
 - When you don't know, say: "I don't have that information. Please contact our office at [INFO_EMAIL] or [MAIN_PHONE]."
+- When in doubt about food safety, ALWAYS defer to the camp nurse
 
 ## CONTACT INFORMATION
 
@@ -1147,15 +1224,15 @@ Replace these placeholders:
         segmentsLoading.style.display = 'block';
         addCamperButton.style.display = 'none';
 
-        // Pre-load custom instructions for this camp (will be cached)
-        await loadCustomInstructions(camp.vectorStoreId);
-
-        // Fetch and render new segments for this camp
+        // Fetch segments for this camp (will be instant for Camp Colorado)
         availableSegments = await fetchSegments(camp.vectorStoreId);
 
         // Hide loading indicator and show add button
         segmentsLoading.style.display = 'none';
         addCamperButton.style.display = 'flex';
+
+        // Pre-load custom instructions in background (non-blocking)
+        loadCustomInstructions(camp.vectorStoreId);
 
         // Add first camper card
         addCamperCard();
@@ -1222,6 +1299,7 @@ Replace these placeholders:
     addCamperButton.addEventListener('click', addCamperCard);
     customInstructionsToggle.addEventListener('click', toggleCustomInstructions);
     saveCustomInstructionsButton.addEventListener('click', saveCustomInstructions);
+    deleteCustomInstructionsButton.addEventListener('click', deleteCustomInstructions);
     loadTemplateButton.addEventListener('click', loadInstructionsTemplate);
 
     inputForm.addEventListener('submit', handleFormSubmit);
