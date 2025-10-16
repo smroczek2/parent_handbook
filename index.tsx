@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const DELETE_CUSTOM_INSTRUCTIONS_API_ENDPOINT = "/api/delete-custom-instructions";
 
     const WELCOME_MESSAGE = "Hi! I can help answer questions about your selected camp. What would you like to know?";
-    const INSTRUCTIONS = "You are a helpful AI assistant for a summer camp. Your role is to help parents find answers to their questions about the camp by searching through the camp's documentation. Be friendly, informative, and concise. Focus on providing accurate information from the documentation. If a question cannot be answered from the available documents, politely let the parent know.\n\nIMPORTANT: Answer ONLY the specific question asked. Do NOT suggest follow-up questions, additional actions, or offer to help with anything else. Simply provide the requested information and end your response there.";
+    const INSTRUCTIONS = "You are a helpful AI assistant for a summer camp. Your role is to help parents find answers to their questions about the camp by searching through the camp's documentation. Be friendly, informative, and concise. Focus on providing accurate information from the documentation. If a question cannot be answered from the available documents, politely let the parent know, this includes incomplete questions or questions the just contain random characters or a period. \n\nIMPORTANT: Answer ONLY the specific question asked. Do NOT suggest follow-up questions, additional actions, or offer to help with anything else. Simply provide the requested information and end your response there.";
 
     let availableCamps: Camp[] = [];
     let activeCamp: Camp | null = null;
